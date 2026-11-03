@@ -2319,7 +2319,7 @@ const geminiSample = {
 // the page reads that key from the loader's call, so it can also ask other models.
 // Pro models first; Canvas may not grant them, and then the loader's model does the work (the app says which one).
 const CANVAS_MODELS = ['gemini-3-pro-preview', 'gemini-2.5-pro', 'gemini-3-flash-preview', null];
-let canvasKey = null;
+let canvasKey = null; const canvasRefused = new Set();
 async function probeCanvasKey() {
   if (canvasKey !== null) return canvasKey;
   const real = window.fetch; let url = '';
@@ -2331,8 +2331,12 @@ async function probeCanvasKey() {
 const canvasCall = async (model, body, signal) => model
   ? fetch(`${GEM}/models/${model}:generateContent?key=${encodeURIComponent(await probeCanvasKey())}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
   : window.XM_CANVAS.generate(body, signal);
-// the model that did the last job, as the teacher reads it
-const modelName = () => { const m = sample && sample.lastModel; return m ? `Gemini ${m.replace(/^gemini-/, '').replace(/-preview.*$/, '').replace(/-/g, ' ').replace(/\b(pro|flash)\b/, s => s[0].toUpperCase() + s.slice(1))}` : AI; };
+// the model that did the last job, as the teacher reads it (and a word when it was not a Pro model)
+const modelName = () => {
+  const m = sample && sample.lastModel; if (!m) return AI;
+  const n = `Gemini ${m.replace(/^gemini-/, '').replace(/-preview.*$/, '').replace(/-/g, ' ').replace(/\b(pro|flash)\b/, s => s[0].toUpperCase() + s.slice(1))}`;
+  return /pro/.test(m) ? n : `${n} (Gemini Pro לא זמין באפליקציות של Canvas)`;
+};
 const canvasSample = {
   pdf: true, lastModel: '',
   async json(prompt, opts) {
@@ -2340,14 +2344,15 @@ const canvasSample = {
     const body = { contents: [{ role: 'user', parts: filesAndText(prompt, opts) }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 65536 } };
     // reading a link is a tool, and tools do not mix with the JSON-only answer mode
     if (opts.tools) { body.tools = opts.tools; delete body.generationConfig.responseMimeType; }
-    const models = CANVAS_MODELS, trail = [];
+    // models Canvas refused once are skipped for the rest of the visit
+    const models = CANVAS_MODELS.filter(x => !canvasRefused.has(x)), trail = [];
     let res, wait = 2000, m = 0;
     for (let attempt = 0; ; attempt++) {
       try { res = await canvasCall(models[m], body, opts.signal); }
       catch (e) { throw { code: e && e.name === 'AbortError' ? 'cancelled' : 'network' }; }
       if (res.status === 400 && body.generationConfig.maxOutputTokens) { delete body.generationConfig.maxOutputTokens; continue; }
       if ((res.status === 429 || res.status === 503) && attempt < 2) { await new Promise(r => setTimeout(r, wait)); wait *= 3; continue; }
-      if ([401, 403, 404, 429].includes(res.status) && m + 1 < models.length) { trail.push(`${models[m] || 'loader'}: ${res.status}`); m++; attempt = 0; wait = 2000; continue; }
+      if ([401, 403, 404, 429].includes(res.status) && m + 1 < models.length) { if (res.status === 403 && models[m]) canvasRefused.add(models[m]); trail.push(`${models[m] || 'loader'}: ${res.status}`); m++; attempt = 0; wait = 2000; continue; }
       break;
     }
     if (!res.ok) {
@@ -2446,6 +2451,13 @@ function openPaste() {
     $('modal').hidden = true;
     const s = await samplePromise;
     if (/^https?:\/\/\S+$/.test(v)) {
+      // inside Canvas Gemini cannot open links, so a link works only when the site lets the page download the file itself
+      if (CANVAS) {
+        let f = null;
+        try { const r = await fetch(v); if (r.ok) { const b = await r.blob(); const nm = decodeURIComponent(v.split(/[?#]/)[0].split('/').pop() || 'מבחן'); f = new File([b], /\.(pdf|docx)$/i.test(nm) ? nm : nm + (/pdf/.test(b.type) ? '.pdf' : '.docx'), { type: b.type }); } } catch (e) {}
+        if (f) { handleFile(f); return; }
+        showModal(`<h2>לא הצלחתי לפתוח את הקישור</h2><p>האתר לא מאפשר לפתוח את הקובץ מכאן. מורידים את הקובץ למחשב (PDF או Word), ומעלים אותו בכפתור "בחירת קובץ".</p><div class="row"><button type="button" class="btn primary" data-close>סגירה</button></div>`); return;
+      }
       if (!s || !s.pdf) { showModal(`<h2>קישור עובד עם Gemini</h2><p>כאן אפשר להדביק את הטקסט של המבחן עצמו.</p><div class="row"><button type="button" class="btn primary" data-close>סגירה</button></div>`); return; }
       lines = null;
       const name = decodeURIComponent(v.split(/[?#]/)[0].split('/').pop() || 'מבחן מקישור');
@@ -2471,7 +2483,7 @@ $('askForm').addEventListener('submit', async e => {
   snapshot();
   const keepSettings = exam.settings, src = exam._source, pics = exam.images;
   exam = normalize(keepArts(out, arts)); exam._source = src; exam.images = pics; exam.settings = Object.assign(keepSettings, out.settings || {});
-  $('askIn').value = ''; notes = [`בוצע: ${req}`];
+  $('askIn').value = ''; notes = [`בוצע עם ${modelName()}: ${req}`];
   changed(true);
 });
 async function askClaudeQuestion() {
