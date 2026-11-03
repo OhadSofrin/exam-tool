@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מבחנים בהקלדה</title>
+  <style>html, body { height: 100%; margin: 0; } #xm-loading { font-family: Arial, sans-serif; padding: 60px 20px; text-align: center; color: #5b6577; }</style>
+</head>
+<body>
+  <div id="xm-loading">טוען את הכלי…</div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // the tool itself: dist/exam-tool.js from github.com/OhadSofrin/exam-tool, served by jsDelivr
+    const TOOL_URL = "https://cdn.jsdelivr.net/gh/OhadSofrin/exam-tool@main/dist/exam-tool.js";
+    const MODEL = "gemini-3-flash-preview";
+
+    // Canvas fills in the empty key, so Gemini runs on the account of whoever opened this Canvas
+    const apiKey = "";
+    const generate = (payload, signal) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal
+    });
+
+    // Canvas's cloud storage, private to each user
+    const appId = typeof __app_id !== "undefined" ? __app_id : "exam-tool";
+    const firebaseConfig = typeof __firebase_config !== "undefined" ? JSON.parse(__firebase_config) : null;
+    let fs = null, uid = null;
+    if (firebaseConfig) {
+      try {
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app), auth = getAuth(app);
+        if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+        else await signInAnonymously(auth);
+        uid = auth.currentUser && auth.currentUser.uid;
+        fs = { db, doc, getDoc, setDoc, deleteDoc, collection, getDocs };
+      } catch (err) { console.error("Firebase init failed:", err); }
+    }
+
+    window.XM_CANVAS = { generate, appId, uid, fs };
+    const s = document.createElement("script");
+    s.src = TOOL_URL;
+    s.onload = () => document.getElementById("xm-loading").remove();
+    s.onerror = () => { document.getElementById("xm-loading").textContent = "לא הצלחתי לטעון את הכלי. בדקו את החיבור לאינטרנט ונסו שוב."; };
+    document.body.appendChild(s);
+  </script>
+</body>
+</html>

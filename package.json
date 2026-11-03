@@ -1,0 +1,9 @@
+{
+  "name": "exam-tool",
+  "private": true,
+  "type": "module",
+  "description": "ממיר מבחני לשון מ-Word למבחנים נוחים להקלדה",
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}
