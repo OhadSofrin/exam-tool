@@ -35,15 +35,39 @@ async function readDocx(buf) {
     if (levels[lvl].fmt === 'bullet' || levels[lvl].fmt === 'none') return '';
     return levels[lvl].text.replace(/%(\d)/g, (_, k) => fmtNum((levels[k - 1] || levels[lvl]).fmt, c[k - 1] == null ? (levels[k - 1] || {}).start || 1 : c[k - 1])) + ' ';
   }
+  // pictures: each one gets an id, and the text keeps a [תמונה:id] mark where it stood
+  const rels = {}, pics = [];
+  const relFile = zip.file('word/_rels/document.xml.rels');
+  if (relFile) Array.from(P.parseFromString(await relFile.async('string'), 'application/xml').getElementsByTagName('Relationship')).forEach(r => { rels[r.getAttribute('Id')] = r.getAttribute('Target'); });
+  const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const picFor = rid => { let x = pics.find(p => p.rid === rid); if (!x) { x = { id: 'img' + (pics.length + 1), rid }; pics.push(x); } return x.id; };
+  function picIn(n) {
+    const blip = n.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/main', 'blip')[0];
+    const vml = n.getElementsByTagNameNS('urn:schemas-microsoft-com:vml', 'imagedata')[0];
+    const rid = blip ? blip.getAttributeNS(R, 'embed') || blip.getAttribute('r:embed') : vml ? vml.getAttributeNS(R, 'id') || vml.getAttribute('r:id') : '';
+    return rid && rels[rid] ? picFor(rid) : '';
+  }
+  // bold becomes **…**, underline becomes [קו:…]; an underlined run of spaces is an answer line
+  const wrap = (s, b, u) => {
+    const m = s.match(/^(\s*)([\s\S]*?)(\s*)$/); let core = m[2];
+    if (!core) return u && s.length >= 2 ? ' _____ ' : s;
+    if (/^_+$/.test(core)) return s;
+    if (u) core = `[קו:${core.replace(/\]/g, ')')}]`;
+    if (b) core = `**${core}**`;
+    return m[1] + core + m[3];
+  };
   function paraText(p) {
-    let out = '', bold = false, buf = '';
-    const flush = () => { if (!buf) return; out += bold && buf.trim() && !/^_+$/.test(buf.trim()) ? buf.replace(/^(\s*)(.*?)(\s*)$/, '$1**$2**$3') : buf; buf = ''; };
+    let out = '', bold = false, und = false, buf = '';
+    const flush = () => { if (!buf) return; out += wrap(buf, bold, und); buf = ''; };
     Array.from(p.getElementsByTagNameNS(W, 'r')).forEach(r => {
-      const rPr = kid(r, 'rPr'); const b = on(kid(rPr, 'b')) || on(kid(rPr, 'bCs'));
+      const rPr = kid(r, 'rPr'); const b = on(kid(rPr, 'b')) || on(kid(rPr, 'bCs')), u = on(kid(rPr, 'u'));
       let t = '';
-      kids(r).forEach(n => { if (n.localName === 't') t += n.textContent; else if (n.localName === 'tab') t += ' '; else if (n.localName === 'br') t += '\n'; });
+      kids(r).forEach(n => {
+        if (n.localName === 't') t += n.textContent; else if (n.localName === 'tab') t += ' '; else if (n.localName === 'br') t += '\n';
+        else if (n.localName === 'drawing' || n.localName === 'pict') { const id = picIn(n); if (id) { flush(); out += t + ` [תמונה:${id}] `; t = ''; } }
+      });
       if (!t) return;
-      if (b !== bold) { flush(); bold = b; }
+      if (b !== bold || u !== und) { flush(); bold = b; und = u; }
       buf += t;
     });
     flush();
@@ -60,7 +84,26 @@ async function readDocx(buf) {
     });
   }
   walk(doc.getElementsByTagNameNS(W, 'body')[0]);
+  // pictures the browser can show, made smaller so the exam stays light; the marks of the rest are removed
+  const images = {};
+  for (const x of pics) {
+    const path = ('word/' + rels[x.rid]).replace(/^word\/\//, '').replace(/word\/\.\.\//, '');
+    const f = zip.file(path);
+    try { const url = f && await shrinkImage(await f.async('blob'), path); if (url) images[x.id] = url; } catch (e) {}
+  }
+  const strip = s => s.replace(/ ?\[תמונה:(img\d+)\] ?/g, (m, id) => images[id] ? m : ' ');
+  lines.forEach(l => { if (l.k === 'p') l.t = strip(l.t); else l.rows = l.rows.map(r => r.map(strip)); });
+  lines.images = images;
   return lines;
+}
+async function shrinkImage(blob, name) {
+  const type = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp' }[(name.split('.').pop() || '').toLowerCase()];
+  if (!type || typeof createImageBitmap === 'undefined') return '';
+  const bmp = await createImageBitmap(new Blob([blob], { type }));
+  const k = Math.min(1, 760 / bmp.width, 900 / bmp.height);
+  const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.72);
 }
 
 function buildExam(lines) {

@@ -13,8 +13,9 @@
     import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // the tool itself: dist/exam-tool.js from github.com/OhadSofrin/exam-tool, served by jsDelivr.
-    // the latest version first; the tagged copy if the CDN has not caught up with the latest push yet
+    // the tool itself: dist/exam-tool.js from github.com/OhadSofrin/exam-tool.
+    // GitHub serves the latest version within minutes of a push; the CDN copies are the fallback
+    const FRESH_URL = "https://raw.githubusercontent.com/OhadSofrin/exam-tool/main/dist/exam-tool.js";
     const TOOL_URLS = [
       "https://cdn.jsdelivr.net/gh/OhadSofrin/exam-tool@main/dist/exam-tool.js",
       "https://cdn.jsdelivr.net/gh/OhadSofrin/exam-tool@v1/dist/exam-tool.js"
@@ -54,7 +55,15 @@
       };
       document.body.appendChild(s);
     };
-    load(0);
+    fetch(FRESH_URL, { cache: "no-store" })
+      .then(r => r.ok ? r.text() : Promise.reject(new Error(String(r.status))))
+      .then(code => {
+        const s = document.createElement("script");
+        s.textContent = code;
+        document.body.appendChild(s);
+        document.getElementById("xm-loading").remove();
+      })
+      .catch(() => load(0));
   </script>
 </body>
 </html>

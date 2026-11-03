@@ -75,6 +75,8 @@ const Lib = {
   metaOf(ex) { const c = counts(ex); return { title: ex.title || 'מבחן ללא שם', subtitle: ex.subtitle || '', updatedAt: Date.now(), nq: c.q, ns: c.s, minutes: +ex.minutes || 0, texts: !!(ex.settings.texts && ex.articles.length), nikud: !!ex.settings.nikud, source: ex._source || '' }; },
   async save(id, ex) {
     const meta = this.metaOf(ex), json = JSON.stringify(ex);
+    // one cloud document holds up to 1 MB, pictures included
+    if (CL.ok() && new Blob([json]).size > 1000000) throw { code: 'too_big' };
     if (CL.ok()) { const f = window.XM_CANVAS.fs; await f.setDoc(CL.ref('xm_body', id), { json }); await f.setDoc(CL.ref('xm_meta', id), meta); return; }
     if (this.cloud()) { await this.bodyDoc(id).set({ json }); await this.metaCol().doc(id).set(meta); return; }
     localStorage.setItem('xm-lib-' + id, json);
@@ -156,7 +158,11 @@ async function flush() {
   if (!curId || !dirty) return; if (saving) { saveT = setTimeout(flush, 400); return; }
   saving = true; dirty = false;
   try { await Lib.save(curId, exam); $('saved').className = 'saved ok'; $('saved').textContent = 'נשמר'; }
-  catch (e) { dirty = true; $('saved').className = 'saved'; $('saved').textContent = e && e.code === 'quota_exceeded' ? 'אין מקום לשמור' : 'לא נשמר, מנסה שוב…'; saveT = setTimeout(flush, 4000); }
+  catch (e) {
+    dirty = true; $('saved').className = 'saved';
+    if (e && e.code === 'too_big') { $('saved').textContent = 'גדול מדי לשמירה: מחקו תמונה'; saving = false; return; }
+    $('saved').textContent = e && e.code === 'quota_exceeded' ? 'אין מקום לשמור' : 'לא נשמר, מנסה שוב…'; saveT = setTimeout(flush, 4000);
+  }
   saving = false;
 }
 async function createExam(ex, source) {
@@ -227,20 +233,23 @@ const TYPES = [
   ['mc', 'שאלה אמריקאית', 'תשובות א–ד, התלמיד בוחר אחת'], ['long', 'תשובה פתוחה', 'תיבה לכתיבת תשובה'],
   ['essay', 'חיבור / מטלת כתיבה', 'תיבה גדולה עם מונה מילים'], ['table', 'טבלה', 'למשל שורש, בניין וגזרה'],
   ['mark', 'סימון מילים', 'התלמיד לוחץ על מילים כדי לסמן אותן'], ['split', 'חלוקת משפט', 'התלמיד מסמן / בין מילים'],
+  ['punct', 'פיסוק', 'התלמיד מוסיף סימני פיסוק לטקסט'],
   ['sort', 'מיון לעמודות', 'התלמיד ממיין מילים לקבוצות'], ['match', 'התאמה', 'לכל פריט התלמיד בוחר התאמה']];
 const TNAME = Object.fromEntries(TYPES.map(t => [t[0], t[1]]));
 const newBlock = k => k === 'mc' ? { t: k, opts: ['', '', '', ''] } : k === 'long' ? { t: k, rows: 3 } : k === 'essay' ? { t: k, rows: 14, min: 0, max: 0 } : k === 'table' ? { t: k, rows: [['', ''], ['', '']] } : k === 'sort' ? { t: k, items: [], cols: 2, head: '', meaning: false } : k === 'match' ? { t: k, left: [], right: [] } : { t: k, v: '' };
 
 /* text with answer places <-> editable HTML with chips */
-const TOKRE = new RegExp(String.raw`\*\*(.+?)\*\*|(_{3,})|\{([^{}]+?\s\/\s[^{}]+?)\}|(\[שורש\])|\[(${LIST_KEYS.join('|')})\]|\[רשימה:([^\]]+)\]|\[מעל:([^\]|]+)(?:\|([^\]]+))?\]|(\[(?:מאמר|טקסט|קטע)\s*\d+(?:\s*,\s*פס['׳]?\s*\d+)?\])`, 'g');
+const TOKRE = new RegExp(String.raw`\*\*(.+?)\*\*|(_{3,})|\{([^{}]+?\s\/\s[^{}]+?)\}|(\[שורש\])|\[(${LIST_KEYS.join('|')})\]|\[רשימה:([^\]]+)\]|\[מעל:([^\]|]+)(?:\|([^\]]+))?\]|(\[(?:מאמר|טקסט|קטע)\s*\d+(?:\s*,\s*(?:פס['׳]?|פסקה)\s*(?:\d+|[א-ת]{1,2}))?\])|\[קו:([^\]]+)\]|(\[מסגרת:[^\]]+\]|\[תמונה:[^\]\s]+\])`, 'g');
 function chip(tok) {
   let m;
   if (/^_{3,}$/.test(tok)) return `<span class="tk" contenteditable="false" data-tok="___">▭ משבצת</span>`;
+  if ((m = tok.match(/^\[תמונה:([^\]\s]+)\]$/))) { const src = (exam && exam.images || {})[m[1]]; return `<span class="tk im" contenteditable="false" data-tok="${esc(tok)}">${/^data:image\//.test(src || '') ? `<img src="${src}" alt="">` : 'תמונה חסרה'}</span>`; }
+  if ((m = tok.match(/^\[מסגרת:(.+)\]$/))) return `<span class="tk bx" contenteditable="false" data-tok="${esc(tok)}">${esc(m[1])}</span>`;
   if ((m = tok.match(/^\{(.+)\}$/))) return `<span class="tk ch" contenteditable="false" data-tok="${esc(tok)}">${esc(m[1].split(/\s\/\s/).join(' · '))}</span>`;
   if (tok === '[שורש]') return `<span class="tk rt" contenteditable="false" data-tok="[שורש]">שורש ▢-▢-▢</span>`;
   if ((m = tok.match(/^\[רשימה:(.+)\]$/))) return `<span class="tk ls" contenteditable="false" data-tok="${esc(tok)}">${esc(m[1])}</span>`;
   if ((m = tok.match(/^\[מעל:([^\]|]+)(?:\|([^\]]+))?\]$/))) return `<span class="tk ab" contenteditable="false" data-tok="${esc(tok)}"><small>${esc(m[2] ? m[2] + ' ▾' : 'משבצת')}</small><b>${esc(m[1])}</b></span>`;
-  if ((m = tok.match(/^\[(מאמר|טקסט|קטע)\s*(\d+)(?:\s*,\s*פס['׳]?\s*(\d+))?\]$/))) return `<span class="tk rf" contenteditable="false" data-tok="${esc(tok)}">↖ ${m[1]} ${m[2]}${m[3] ? ` · פס׳ ${m[3]}` : ''}</span>`;
+  if ((m = tok.match(/^\[(מאמר|טקסט|קטע)\s*(\d+)(?:\s*,\s*(?:פס['׳]?|פסקה)\s*(\d+|[א-ת]{1,2}))?\]$/))) return `<span class="tk rf" contenteditable="false" data-tok="${esc(tok)}">↖ ${m[1]} ${m[2]}${m[3] ? ` · פס׳ ${m[3]}` : ''}</span>`;
   if ((m = tok.match(/^\[(.+)\]$/))) return `<span class="tk ls" contenteditable="false" data-tok="${esc(tok)}">${esc(m[1])}</span>`;
   return esc(tok);
 }
@@ -248,7 +257,7 @@ function toEditable(text) {
   const s = String(text || ''); let out = '', last = 0, m; const re = new RegExp(TOKRE.source, 'g');
   while ((m = re.exec(s))) {
     out += esc(s.slice(last, m.index)).replace(/\n/g, '<br>'); last = re.lastIndex;
-    out += m[1] !== undefined ? `<b>${toEditable(m[1])}</b>` : chip(m[0]);
+    out += m[1] !== undefined ? `<b>${toEditable(m[1])}</b>` : m[10] !== undefined ? `<u>${toEditable(m[10])}</u>` : chip(m[0]);
   }
   return out + esc(s.slice(last)).replace(/\n/g, '<br>');
 }
@@ -260,6 +269,7 @@ function fromEditable(el) {
       if (n.dataset && n.dataset.tok) out += n.dataset.tok;
       else if (n.tagName === 'BR') out += '\n';
       else if (/^(B|STRONG)$/.test(n.tagName)) { const inner = fromEditable(n); out += inner.trim() ? `**${inner}**` : inner; }
+      else if (n.tagName === 'U') { const inner = fromEditable(n); out += inner.trim() ? `[קו:${inner.replace(/\]/g, ')')}]` : inner; }
       else if (/^(DIV|P)$/.test(n.tagName)) out += (out && !out.endsWith('\n') ? '\n' : '') + fromEditable(n);
       else out += fromEditable(n);
     }
@@ -273,7 +283,7 @@ function blockQE(b, p) {
   const t = b.t || 'text'; let body = '';
   if (t === 'text') body = rich(p + '.v', b.v, 'כתבו כאן טקסט או שאלה…');
   else if (t === 'passage') body = rich(p + '.v', b.v, 'הדביקו כאן את הקטע…', 'passage');
-  else if (t === 'mc') body = lineList(p + '.opts', b.opts, 'תשובה…', true);
+  else if (t === 'mc') body = lineList(p + '.opts', b.opts, 'תשובה…', true) + `<label class="row cap"><input type="checkbox" data-chk="${p}.num"${b.num ? ' checked' : ''}> מספור (1), (2), (3) במקום א, ב, ג</label>`;
   else if (t === 'long') body = `<div class="ansbox"><span>כאן התלמיד כותב את התשובה</span><span class="row"><span class="cap">גודל</span><span class="seg">${[[2, 'קטנה'], [4, 'בינונית'], [8, 'גדולה']].map(([r, n]) => `<button type="button" data-qe="set" data-p="${p}.rows" data-v="${r}" aria-pressed="${(b.rows || 3) === r || (r === 4 && ![2, 8].includes(b.rows || 3))}">${n}</button>`).join('')}</span></span></div>`;
   else if (t === 'essay') body = `<div class="ansbox" style="min-height:6em"><span>תיבה גדולה לכתיבה, עם מונה מילים</span><span class="row"><span class="cap">מילים: מ-</span><input class="numin" type="number" min="0" data-num="${p}.min" value="${b.min || ''}" aria-label="מינימום מילים"><span class="cap">עד</span><input class="numin" type="number" min="0" data-num="${p}.max" value="${b.max || ''}" aria-label="מקסימום מילים"></span></div>`;
   else if (t === 'table') {
@@ -281,7 +291,10 @@ function blockQE(b, p) {
     body = `<div class="ted"><table>${rows.map((r, ri) => `<tr class="${ri === 0 && b.head !== false ? 'head' : ''}">${r.map((c, ci) => `<td>${rich(`${p}.rows.${ri}.${ci}`, c, '')}</td>`).join('')}</tr>`).join('')}</table></div>
       <div class="ted-bar"><button type="button" class="addline" data-qe="tbl" data-p="${p}" data-v="row+">+ שורה</button><button type="button" class="addline" data-qe="tbl" data-p="${p}" data-v="col+">+ עמודה</button><button type="button" class="ico" data-qe="tbl" data-p="${p}" data-v="row-">− שורה</button><button type="button" class="ico" data-qe="tbl" data-p="${p}" data-v="col-">− עמודה</button><span class="cap">תא ריק = משבצת לתשובה. אפשר להכניס לתא שורש או רשימה מהסרגל למעלה.</span></div>`;
   }
-  else if (t === 'mark' || t === 'split') body = `${rich(p + '.v', b.v, t === 'mark' ? 'הטקסט שבו התלמיד יסמן מילים…' : 'המשפט שהתלמיד יחלק…', 'passage')}<span class="cap">${t === 'mark' ? 'בזמן המבחן התלמיד לוחץ על מילים כדי לסמן אותן.' : 'בזמן המבחן התלמיד לוחץ בין מילים כדי לסמן גבול ( / ).'}</span>`;
+  else if (t === 'mark') body = `${rich(p + '.v', b.v, 'הטקסט שבו התלמיד יסמן מילים…', 'passage')}<span class="cap">בזמן המבחן התלמיד לוחץ על מילים כדי לסמן אותן.</span>`;
+  else if (t === 'split') body = `${rich(p + '.v', b.v, 'המשפט שהתלמיד יחלק…', 'passage')}
+    <div class="row"><span class="cap">בזמן המבחן התלמיד לוחץ בין מילים כדי לסמן גבול ( / ). ואחר כך ליד כל חלק:</span><select class="numin" style="width:auto" data-sel="${p}.label">${[['', 'לא כותב כלום'], ['פסוקית', 'בוחר סוג פסוקית'], ['תפקיד', 'בוחר תפקיד תחבירי'], ['free', 'כותב בעצמו']].map(([v, n]) => `<option value="${v}"${(b.label || '') === v ? ' selected' : ''}>${n}</option>`).join('')}</select></div>`;
+  else if (t === 'punct') body = `${rich(p + '.v', b.v, 'הטקסט בלי סימני הפיסוק…', 'passage')}<span class="cap">בזמן המבחן התלמיד לוחץ אחרי מילה ובוחר סימן פיסוק.</span>`;
   else if (t === 'sort') body = `${chipsEd(p + '.items', b.items, 'הקלידו מילה ולחצו Enter')}
     <div class="row"><span class="cap">עמודות</span><span class="seg">${[2, 3, 4].map(n => `<button type="button" data-qe="set" data-p="${p}.cols" data-v="${n}" aria-pressed="${(+b.cols || 2) === n}">${n}</button>`).join('')}</span>
     <span class="cap">כותרת כל עמודה</span><select class="numin" style="width:auto" data-sel="${p}.head"><option value="">התלמיד כותב</option>${LIST_KEYS.map(n => `<option${b.head === n ? ' selected' : ''}>בחירה: ${n}</option>`).join('')}</select>
@@ -299,11 +312,14 @@ function qeHtml() {
         <button type="button" class="btn primary small" data-qe="done">✓ סיום עריכה</button></div>
       <div class="fmt off" id="fmt" aria-label="הוספה לטקסט"><span class="lbl">בתוך הטקסט:</span>
         <button type="button" class="fb" data-ins="bold"><b>B</b> מודגש</button>
+        <button type="button" class="fb" data-ins="u"><u>קו</u> מתחת</button>
         <button type="button" class="fb" data-ins="blank">משבצת <span class="pv">▭</span></button>
         <button type="button" class="fb" data-ins="choice">בחירה <span class="pv">א · ב</span></button>
         <button type="button" class="fb" data-ins="root">שורש <span class="pv">▢-▢-▢</span></button>
         <button type="button" class="fb" data-ins="list">רשימה <span class="pv">▾</span></button>
         <button type="button" class="fb" data-ins="above">מעל מילה</button>
+        <button type="button" class="fb" data-ins="box">מסגרת <span class="pv">▢</span></button>
+        <button type="button" class="fb" data-ins="img">תמונה</button>
         ${exam.settings.texts && exam.articles.length ? `<button type="button" class="fb" data-ins="ref">הפניה ל${esc(exam.settings.textItem)}</button>` : ''}</div>
       <form class="qe-ask" data-qeask><span>✦ ${AI}:</span><input id="qeAskIn" placeholder="${sample ? 'מה לשנות בשאלה? למשל: תהפוך לאמריקאית עם 4 תשובות' : 'שינוי במילים זמין כשהכלי פתוח מתוך Claude'}"${sample ? '' : ' disabled'}><button type="submit" class="btn small"${sample ? '' : ' disabled'}>שינוי</button></form>
     </div>
@@ -409,7 +425,7 @@ function insertTok(tok, range) {
 function insertFromBar(kind, btn) {
   if (!lastRich || !lastRich.isConnected) { flashFmt(); return; }
   const r = caretRange(); const selText = r ? r.toString().trim() : '';
-  if (kind === 'bold') { lastRich.focus(); if (r) { const s = getSelection(); s.removeAllRanges(); s.addRange(r); } document.execCommand('bold'); lastRich.dispatchEvent(new Event('input', { bubbles: true })); return; }
+  if (kind === 'bold' || kind === 'u') { lastRich.focus(); if (r) { const s = getSelection(); s.removeAllRanges(); s.addRange(r); } document.execCommand(kind === 'u' ? 'underline' : 'bold'); lastRich.dispatchEvent(new Event('input', { bubbles: true })); return; }
   if (kind === 'blank') return insertTok('___', r);
   if (kind === 'root') return insertTok('[שורש]', r);
   const keep = r ? r.cloneRange() : null;
@@ -419,6 +435,19 @@ function insertFromBar(kind, btn) {
     pick => { if (pick) return insertTok(`[${pick}]`, keep); const o = $('popIn').value.split(/\s*[,/]\s*/).filter(Boolean); if (o.length < 2) return false; insertTok(`[רשימה:${o.join(' / ')}]`, keep); });
   if (kind === 'above') openPop(btn, `<h3>משבצת מעל מילה</h3><label class="f">המילה או הצירוף<input id="popIn" value="${esc(selText)}" placeholder="למשל: הילדים"></label><label class="f">מה התלמיד ממלא<select id="popSel"><option value="">כותב בעצמו</option>${LIST_KEYS.map(n => `<option>${n}</option>`).join('')}</select></label><div class="row"><button type="button" class="btn primary small" id="popOk">הוספה</button></div>`,
     () => { const w = $('popIn').value.trim(); if (!w) return false; insertTok(`[מעל:${w}${$('popSel').value ? '|' + $('popSel').value : ''}]`, keep); });
+  if (kind === 'box') openPop(btn, `<h3>מילים במסגרת</h3><label class="f">המילים שבתוך המסגרת<input id="popIn" value="${esc(selText)}" placeholder="למשל: אם ימנעו הכותבים"></label><div class="row"><button type="button" class="btn primary small" id="popOk">הוספה</button></div>`,
+    () => { const w = $('popIn').value.trim().replace(/\]/g, ')'); if (!w) return false; insertTok(`[מסגרת:${w}]`, keep); });
+  if (kind === 'img') {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/gif,image/webp';
+    inp.onchange = async () => {
+      const f = inp.files[0]; if (!f) return;
+      let url = ''; try { url = await shrinkImage(f, f.name || 'x.png'); } catch (e) {}
+      if (!url) { showModal(`<h2>לא הצלחתי לקרוא את התמונה</h2><p>אפשר להוסיף תמונה מסוג PNG או JPG.</p><div class="row"><button type="button" class="btn primary" data-close>סגירה</button></div>`); return; }
+      exam.images = exam.images || {}; let n = 1; while (exam.images['img' + n]) n++;
+      exam.images['img' + n] = url; insertTok(`[תמונה:img${n}]`, keep);
+    };
+    inp.click(); return;
+  }
   if (kind === 'ref') openPop(btn, `<h3>הפניה ל${esc(exam.settings.textItem)}</h3><div class="grid2"><label class="f">${esc(exam.settings.textItem)}<select id="popA">${exam.articles.map((a, i) => `<option value="${i + 1}">${i + 1}. ${esc(a.title || '')}</option>`).join('')}</select></label><label class="f">פסקה (לא חובה)<input id="popP" type="number" min="1"></label></div><div class="row"><button type="button" class="btn primary small" id="popOk">הוספה</button></div>`,
     () => insertTok(`[${exam.settings.textItem} ${$('popA').value}${$('popP').value ? `, פס' ${$('popP').value}` : ''}]`, keep));
 }
@@ -431,7 +460,8 @@ function editChip(tk) {
   if ((m = tok.match(/^\{(.+)\}$/))) { html = `<h3>בחירה בתוך המשפט</h3><label class="f">האפשרויות (מפרידים בפסיק)<input id="popIn" value="${esc(m[1].split(/\s\/\s/).join(', '))}"></label>`; ok = () => { const o = $('popIn').value.split(/\s*[,/]\s*/).filter(Boolean); if (o.length < 2) return false; replace(`{${o.join(' / ')}}`); }; }
   else if ((m = tok.match(/^\[מעל:([^\]|]+)(?:\|([^\]]+))?\]$/))) { html = `<h3>משבצת מעל מילה</h3><label class="f">המילה<input id="popIn" value="${esc(m[1])}"></label><label class="f">מה התלמיד ממלא<select id="popSel"><option value="">כותב בעצמו</option>${LIST_KEYS.map(n => `<option${m[2] === n ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`; ok = () => { const w = $('popIn').value.trim(); if (!w) return false; replace(`[מעל:${w}${$('popSel').value ? '|' + $('popSel').value : ''}]`); }; }
   else if ((m = tok.match(/^\[(רשימה:)?(.+)\]$/)) && tok !== '[שורש]' && !/^\[(מאמר|טקסט|קטע)/.test(tok)) { const cur = m[1] ? '' : m[2]; html = `<h3>רשימה לבחירה</h3><div class="lists">${LIST_KEYS.map(n => `<button type="button" data-pick="${n}"${n === cur ? ' style="border-color:var(--ink);color:var(--ink)"' : ''}>${n}</button>`).join('')}</div><label class="f">או רשימה משלכם<input id="popIn" value="${m[1] ? esc(m[2].split(/\s\/\s/).join(', ')) : ''}"></label>`; ok = pick => { if (pick) return replace(`[${pick}]`); const o = $('popIn').value.split(/\s*[,/]\s*/).filter(Boolean); if (o.length < 2) return false; replace(`[רשימה:${o.join(' / ')}]`); }; }
-  else { html = `<h3>${tok === '___' ? 'משבצת לתשובה' : tok === '[שורש]' ? 'משבצות שורש' : 'הפניה'}</h3><p class="cap" style="margin:0">אפשר למחוק או להשאיר.</p>`; ok = null; }
+  else if ((m = tok.match(/^\[מסגרת:(.+)\]$/))) { html = `<h3>מילים במסגרת</h3><label class="f">המילים<input id="popIn" value="${esc(m[1])}"></label>`; ok = () => { const w = $('popIn').value.trim().replace(/\]/g, ')'); if (!w) return false; replace(`[מסגרת:${w}]`); }; }
+  else { html = `<h3>${tok === '___' ? 'משבצת לתשובה' : tok === '[שורש]' ? 'משבצות שורש' : /^\[תמונה:/.test(tok) ? 'תמונה' : 'הפניה'}</h3><p class="cap" style="margin:0">אפשר למחוק או להשאיר.</p>`; ok = null; }
   openPop(tk, html + `<div class="row">${ok ? '<button type="button" class="btn primary small" id="popOk">שמירה</button>' : '<span></span>'}<button type="button" class="btn small danger" id="popDel">מחיקה</button></div>`, ok, remove);
 }
 let popOk = null;
@@ -474,13 +504,16 @@ function renderDrawer() {
     body = (s.texts ? '' : `<div class="notes">אזור הטקסטים כבוי, ולכן התלמיד לא יראה אותם. <button type="button" class="btn small" data-dact="texts-on">להפעיל</button></div>`) +
       exam.articles.map((a, i) => `<div class="art-card"><div class="h"><b>${esc(s.textItem)} ${i + 1}</b><button type="button" class="ico" data-dact="up" data-i="${i}">↑</button><button type="button" class="ico" data-dact="down" data-i="${i}">↓</button><button type="button" class="ico del" data-dact="del" data-i="${i}">מחיקה</button></div>
         <label class="f">כותרת<input data-dv="articles.${i}.title" value="${esc(a.title)}"></label><label class="f">מקור / כותב<input data-dv="articles.${i}.by" value="${esc(a.by)}"></label>
-        <label class="f">הטקסט (כל פסקה בשורה; ימוספרו אוטומטית)<textarea data-dv="articles.${i}.ps" rows="${Math.min(12, Math.max(3, (a.ps || []).length + 1))}">${esc((a.ps || []).join('\n'))}</textarea></label></div>`).join('') +
+        <label class="f">הטקסט (כל פסקה בשורה; ימוספרו אוטומטית)<textarea data-dv="articles.${i}.ps" rows="${Math.min(12, Math.max(3, (a.ps || []).length + 1))}">${esc((a.ps || []).join('\n'))}</textarea></label>
+        ${sw(`articles.${i}.pl`, a.pl === 'letters', 'פסקאות באותיות', 'פסקה א, פסקה ב… במקום פס׳ 1, פס׳ 2')}</div>`).join('') +
       `<button type="button" class="btn" data-dact="add-art">+ ${esc(s.textItem)} חדש</button>`;
   } else if (drawer.kind === 'part') {
     const part = exam.parts[drawer.pi]; if (!part) return closeDrawer();
     title = 'חלק / פרק';
     body = `<label class="f">שם החלק<input data-dv="parts.${drawer.pi}.title" value="${esc(part.title)}"></label><label class="f">ניקוד<input data-dv="parts.${drawer.pi}.pts" value="${esc(part.pts)}"></label>
       <label class="f">הנחיה לחלק (לא חובה)<textarea data-dv="parts.${drawer.pi}.note" rows="2">${esc(part.note)}</textarea></label>
+      ${part.qs.length > 1 ? `<label class="f" style="max-width:18em">על כמה שאלות עונים בחלק הזה<select data-dv="parts.${drawer.pi}.pick"><option value="0">על כולן</option>${part.qs.slice(1).map((x, k) => `<option value="${k + 1}"${+part.pick === k + 1 ? ' selected' : ''}>${k + 1} מתוך ${part.qs.length}</option>`).join('')}</select></label>` : ''}
+      ${sw(`parts.${drawer.pi}.alt`, !!part.alt, 'פרק לבחירה', 'התלמיד בוחר פרק אחד מבין כל הפרקים שמסומנים כך, ועונה רק עליו')}
       <div class="row"><button type="button" class="btn" data-dact="add-q">+ שאלה בחלק הזה</button><button type="button" class="btn" data-dact="add-part">+ חלק חדש אחרי</button></div>
       <div class="row"><button type="button" class="ico" data-dact="pmove" data-v="-1">↑ למעלה</button><button type="button" class="ico" data-dact="pmove" data-v="1">↓ למטה</button><button type="button" class="ico del" data-dact="pdel">מחיקת החלק וכל השאלות בו</button></div>`;
   }
@@ -491,12 +524,13 @@ $('drawer').addEventListener('input', e => {
   const t = e.target, k = t.dataset.dv; if (!k) return;
   let v = t.value;
   if (/(^instructions$|\.ps$)/.test(k)) v = v.split('\n').map(x => x.trim()).filter(Boolean);
-  if (k === 'minutes' || k === 'settings.ext') v = +v || 0;
+  if (k === 'minutes' || k === 'settings.ext' || /\.pick$/.test(k)) v = +v || 0;
   setP2(k, v);
   if (k === 'settings.textsName') { exam.settings.textItem = NAMES[v] || 'מאמר'; changed(true); return; }
+  if (/\.pick$/.test(k)) { changed(true); return; }
   changed(false);
 });
-$('drawer').addEventListener('change', e => { const t = e.target; if (t.dataset.dk) { snapshot(); setP2(t.dataset.dk, t.checked); changed(true); } });
+$('drawer').addEventListener('change', e => { const t = e.target; if (t.dataset.dk) { snapshot(); setP2(t.dataset.dk, /\.pl$/.test(t.dataset.dk) ? (t.checked ? 'letters' : '') : t.checked); changed(true); } });
 function setP2(p, v) { const a = p.split('.'), k = a.pop(); const o = a.length ? a.reduce((x, y) => x[y], exam) : exam; o[k] = v; }
 $('drawer').addEventListener('click', e => {
   const b = e.target.closest('[data-dact]'); if (!b) return;
@@ -525,10 +559,21 @@ async function handleFile(f) {
       if (!m) throw new Error('בקובץ הזה אין מבחן שנוצר בכלי הזה.');
       await createExam(normalize(JSON.parse(m[1].replace(/<\\\//g, '</'))), name); return;
     }
-    if (!/\.docx$/i.test(name)) throw new Error('אפשר להעלות קובץ Word מסוג ‎.docx. קובץ ‎.doc ישן: פותחים אותו ב-Word ושומרים בשם כ-‎.docx.');
+    if (/\.pdf$/i.test(name)) {
+      const s = await samplePromise;
+      if (!s || !s.pdf) throw new Error('כאן אפשר להמיר רק קובצי Word. קובץ PDF: פותחים אותו ב-Word, שומרים בשם כ-‎.docx ומעלים.');
+      if (f.size > 18 * 1024 * 1024) throw new Error('קובץ ה-PDF גדול מדי (יותר מ-18MB). אפשר לשמור ממנו רק את עמודי המבחן ולהעלות שוב.');
+      const data = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.onerror = no; fr.readAsDataURL(f); });
+      lines = null;
+      const ex = normalize({ title: name.replace(/\.pdf$/i, ''), parts: [] }); ex.images = {};
+      await createExam(ex, name); notes = []; renderStatus();
+      await convertPdf(data);
+      return;
+    }
+    if (!/\.docx$/i.test(name)) throw new Error('אפשר להעלות קובץ Word מסוג ‎.docx או PDF. קובץ ‎.doc ישן: פותחים אותו ב-Word ושומרים בשם כ-‎.docx.');
     lines = await readDocx(await f.arrayBuffer());
     const r = buildExam(lines);
-    const ex = normalize(r.exam); if (!ex.title || ex.title.length > 80) ex.title = name.replace(/\.docx$/i, '');
+    const ex = normalize(r.exam); ex.images = lines.images || {}; if (!ex.title || ex.title.length > 80) ex.title = name.replace(/\.docx$/i, '');
     await createExam(ex, name); notes = r.notes; renderStatus();
     // Word files always go through Claude; the built-in recognition is only the fallback
     const s = await samplePromise;
@@ -543,6 +588,12 @@ document.addEventListener('dragenter', e => { if (hasFiles(e)) { dragDepth++; $(
 document.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) { $('dropHint').hidden = true; $('upcard').classList.remove('over'); } });
 document.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
 document.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; $('dropHint').hidden = true; $('upcard').classList.remove('over'); handleFile(e.dataTransfer.files[0]); });
+// a file copied in the computer's folders can also be pasted (Ctrl+V) on the home screen
+document.addEventListener('paste', e => {
+  const fs = e.clipboardData && e.clipboardData.files; if (!fs || !fs.length || $('home').hidden) return;
+  const f = [...fs].find(x => /\.(docx|pdf|html?)$/i.test(x.name || '')); if (!f) return;
+  e.preventDefault(); handleFile(f);
+});
 
 /* ===================== modal ===================== */
 function showModal(html) { $('modalIn').innerHTML = html; $('modal').hidden = false; const b = $('modalIn').querySelector('button'); if (b) b.focus(); }
@@ -588,22 +639,27 @@ function exportDone(fname) {
 }
 
 /* ===================== Claude ===================== */
-const SCHEMA_HELP = `Exam JSON: {"title":str,"subtitle":str,"minutes":int,"instructions":[str],"articles":[{"title":str,"by":str,"ps":[str]}],"parts":[{"title":str,"pts":str,"note":str,"qs":[{"n":str,"intro":[Block],"subs":[{"l":str,"pts":number|null,"blocks":[Block]}]}]}]}
+const SCHEMA_HELP = `Exam JSON: {"title":str,"subtitle":str,"minutes":int,"instructions":[str],"articles":[{"title":str,"by":str,"pl":""|"letters","ps":[str]}],"parts":[{"title":str,"pts":str,"note":str,"alt":str,"pick":int,"qs":[{"n":str,"intro":[Block],"subs":[{"l":str,"pts":number|null,"blocks":[Block]}]}]}]}
 Block types:
  {"t":"text","v":str} question text or a line with inline answer places · {"t":"passage","v":str} reading passage / sentence block
- {"t":"mc","opts":[str]} multiple choice (options א-ד) · {"t":"long","rows":int} written answer
+ {"t":"mc","opts":[str],"num":bool} multiple choice; num=true when the options are numbered (1), (2)… instead of א-ד · {"t":"long","rows":int} written answer
+ {"t":"punct","v":str} the student adds punctuation to this text ("פסקו את הקטע"); v is the text exactly as given, without punctuation
  {"t":"essay","rows":int,"min":int,"max":int} writing task (חיבור, מאמר טיעון, סיכום, מכתב, מטלת כתיבה) with word limits from the instructions
  {"t":"table","rows":[[str]]} first row = headers; empty cell "" = answer box
  {"t":"mark","v":str} student clicks words in this text to mark/underline/circle them ("סמנו/מתחו קו/הקיפו בקטע/במשפט את...")
- {"t":"split","v":str} student marks boundaries with / between words ("חלקו את המשפט לפסוקיות/לאיברים", "סמנו את גבולות הפסוקית")
+ {"t":"split","v":str,"label":""|"פסוקית"|"תפקיד"|"free"} student marks boundaries with / between words ("חלקו את המשפט לפסוקיות/לאיברים", "תחמו את הפסוקית", "סמנו את גבולות הפסוקית"); label = what the student then names for every part: "פסוקית" when asked for the clause type, "תפקיד" when asked for the syntactic role of each clause/phrase (also "נתחו את המשפט: ציינו מעל המילים את התפקידים"), "free" for anything else; omit when only the boundaries are asked
  {"t":"sort","items":[str],"cols":int,"head":"" or list name,"meaning":bool} sort words into columns ("מיינו", "חלקו לזוגות/לקבוצות"); head = list name when column titles come from a list (e.g. "בניין"), "" when the student writes them; meaning=true when asked for the common meaning
  {"t":"match","left":[str],"right":[str]} matching ("התאימו", "מתחו קו בין")
 Tokens inside "v", table cells, options and items:
  ___ typed blank · {opt1 / opt2 / opt3} pick one (every inline "א / ב", נכון / לא נכון, words to circle from a short list)
  [שורש] root letter boxes · ready-made dropdowns: ${LIST_KEYS.map(n => `[${n}]`).join(' ')} · [רשימה:a / b / c] custom dropdown
  [מעל:word] box above a word, [מעל:word|תפקיד] dropdown above a word (any list name) — for "כתבו מעל כל מילה/צירוף..."
- [מאמר N, פס' M] link to article N paragraph M (after every reference to an article) · **bold**
-Rules: keep the exam's wording, nikud and numbering exactly. "l" is the sub label like "א" or "ב(2)"; the first block of a sub is its question text. Points like "(3 נק')" go to "pts", not the text. Every sub must have somewhere to answer. Prefer the most specific type: tables with root/binyan/גזרה/משקל columns use [שורש], [בניין], [גזרה] in empty cells; syntax roles use [מעל:..|תפקיד]; clause types use [פסוקית]; sentence types use [סוג משפט]; logical relations use [קשר לוגי]. Drop page-break notes, draft pages, cover name/class lines and any answers a student already wrote.`;
+ [מאמר N, פס' M] link to article N paragraph M (after every reference to an article; M may be a letter, [מאמר N, פסקה ג]) · **bold**
+ [קו:words] underlined words (keep every underline of the exam, e.g. "הצירוף המסומן בקו") · [מסגרת:words] words in a box (e.g. a clause already bounded)
+ [תמונה:imgN] a picture: keep each mark exactly once, where it stands (in a question's text, a table cell, or as its own article paragraph); never invent marks
+Choices: when a part says to answer only some of its questions ("ענו על ארבע מן השאלות 6–10", "ענו על שתיים מן השאלות"), set its "pick" to that number. When the student chooses one of several chapters/parts ("בחרו בפרק ב – תחביר או בפרק ג – מערכת הצורות", "ענו על אחד מן הפרקים ב–ג"), make each chapter its own part and give those parts the same "alt" (e.g. "בחירה"); drop the line asking to write the chosen chapter's name.
+Articles: paragraphs labelled with letters ("פסקה א", "פסקה ב") → "pl":"letters"; drop the paragraph labels and line numbers from the text. A reference sheet (דף עזר / נספח) is one more article. Titles, part titles and "by" are plain text without marks.
+Rules: keep the exam's wording, nikud and numbering exactly. "l" is the sub label like "א" or "ב(2)"; the first block of a sub is its question text. Points like "(3 נק')" go to "pts", not the text. Every sub must have somewhere to answer. Labelled lines ("מאפיין: ___ דוגמה: ___", "השורש: ___ הבניין: ___") keep every blank; rewriting tasks ("נסחו מחדש", "המירו", "פרקו לשלושה משפטים") get a long answer with one row per line asked. Prefer the most specific type: tables with root/binyan/גזרה/משקל columns use [שורש], [בניין], [גזרה] in empty cells; syntax roles use [מעל:..|תפקיד]; clause types use [פסוקית]; sentence types use [סוג משפט]; logical relations use [קשר לוגי]. Drop page-break notes, draft pages, cover name/class lines and any answers a student already wrote.`;
 const CLAUDE_ERRORS = {
   rate_limited: WEB ? 'הגעתם למגבלה של המפתח החינמי. מחכים דקה ומנסים שוב. אם נגמרה המכסה היומית, היא מתחדשת מחר.' : CANVAS ? 'נגמרה המכסה של Gemini Pro בחשבון הזה. היא מתחדשת לבד אחרי כמה שעות, לפעמים רק למחרת, ואז אפשר לנסות שוב. המבחן שמור ולא נפגע.' : 'יש כרגע עומס או שהגעתם למגבלת השימוש. נסו שוב בעוד כמה דקות.',
   not_granted: CANVAS ? 'Gemini לא אישר בקשות מהחשבון הזה. בדקו שאתם מחוברים לחשבון Google. בחשבון של בית ספר ייתכן שמנהל המערכת חסם את Gemini באפליקציות, ואז אפשר להיכנס עם חשבון Google פרטי.' : 'לא אושרה גישה ל-Claude.',
@@ -613,13 +669,13 @@ const CLAUDE_ERRORS = {
   refusal: `${WEB ? 'Gemini' : 'Claude'} סירב לבצע את הבקשה הזו. נסו לנסח אחרת.`,
   too_large: 'המבחן ארוך מדי לבקשה אחת.'
 };
-async function runClaude(prompt, label) {
+async function runClaude(prompt, label, files) {
   if (WEB && !getKey() && !(await askKey())) return null;
   const ctl = new AbortController();
   showModal(`<h2><span class="spin"></span> ${label}</h2><p>זה לוקח בדרך כלל דקה עד שלוש. אפשר לחכות כאן.</p><p class="cap" id="aiProg"></p><div class="row"><button type="button" class="btn" id="aiStop">עצירה</button></div>`);
   $('aiStop').onclick = () => ctl.abort();
   const onProgress = n => { const p = $('aiProg'); if (p) p.textContent = `${AI} כותב… ${n.toLocaleString('he-IL')} תווים עד עכשיו`; };
-  const o = { modelTier: 'complex', signal: ctl.signal };
+  const o = { modelTier: 'complex', signal: ctl.signal }; if (files) o.files = files;
   if (WEB) o.onProgress = onProgress; else o.onText = ({ text }) => onProgress((text || '').length);
   try { const out = await sample.json(prompt, o); $('modal').hidden = true; return out; }
   catch (e) {
@@ -695,7 +751,10 @@ function parseJsonText(text) {
   if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e) {} }
   throw { code: 'invalid_json' };
 }
+// Gemini reads attached files (a PDF exam) together with the instructions
+const filesAndText = (prompt, opts) => [...((opts && opts.files) || []).map(f => ({ inline_data: { mime_type: f.mime, data: f.data } })), { text: prompt }];
 const geminiSample = {
+  pdf: true,
   async json(prompt, opts) {
     opts = opts || {};
     const key = getKey(); if (!key) throw { code: 'bad_key' };
@@ -706,7 +765,7 @@ const geminiSample = {
       res = await fetch(`${GEM}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
         method: 'POST', signal: opts.signal,
         headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: Math.min(65536, out) } })
+        body: JSON.stringify({ contents: [{ role: 'user', parts: filesAndText(prompt, opts) }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: Math.min(65536, out) } })
       });
     } catch (e) { throw { code: e && e.name === 'AbortError' ? 'cancelled' : 'network' }; }
     if (!res.ok) {
@@ -747,9 +806,10 @@ const geminiSample = {
 const CANVAS_MODELS = ['gemini-3-pro-preview', 'gemini-2.5-pro'];
 const canvasCall = (model, body, signal) => fetch(`${GEM}/models/${model}:generateContent?key=`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
 const canvasSample = {
+  pdf: true,
   async json(prompt, opts) {
     opts = opts || {};
-    const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 65536 } };
+    const body = { contents: [{ role: 'user', parts: filesAndText(prompt, opts) }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 65536 } };
     const models = CANVAS_MODELS;
     let res, wait = 2000;
     for (let m = 0, attempt = 0; ; attempt++) {
@@ -809,21 +869,38 @@ async function restoreFile(f) {
 }
 $('backupBtn').onclick = backupAll;
 $('restoreIn').addEventListener('change', e => { if (e.target.files[0]) restoreFile(e.target.files[0]); e.target.value = ''; });
-const lean = () => Object.assign({}, exam, { _source: undefined, articles: exam.articles.map(a => ({ title: a.title })) });
+// what the AI sees of the exam: articles by title only, pictures by their marks only
+const lean = () => Object.assign({}, exam, { _source: undefined, images: undefined, articles: exam.articles.map(a => ({ title: a.title })) });
 const keepArts = (out, arts) => { if (!out.articles || !out.articles.length || out.articles.every(a => !a.ps || !a.ps.length)) out.articles = arts; return out; };
 async function convertWithClaude() {
   if (!sample || !lines) return;
   const docText = lines.map(l => l.k === 'tbl' ? '[טבלה]\n' + l.rows.map(r => r.join(' | ')).join('\n') + '\n[סוף טבלה]' : l.t).filter(x => x && x.trim()).join('\n');
   const knownArts = exam.articles.slice(), id = curId;
   const artRule = knownArts.length ? `\nThe ${knownArts.length} articles are already extracted: return "articles": [] and do not copy their text, but still add [מאמר N, פס' M] links in the questions.` : '';
-  const out = await runClaude(`You convert a Hebrew school exam (Hebrew language / לשון, grades 11–12; extracted from Word, bold marked with **) into JSON for a typing-friendly exam app. Return ONLY the JSON.\n${SCHEMA_HELP}${artRule}\n\nEXAM:\n${docText}`, `${AI} ממיר את המבחן…`);
+  const out = await runClaude(`You convert a Hebrew school exam (Hebrew language / לשון, grades 11–12; extracted from Word: bold marked with **, underline with [קו:…], pictures with [תמונה:imgN], each table between [טבלה] and [סוף טבלה] with | between cells) into JSON for a typing-friendly exam app. Return ONLY the JSON.\n${SCHEMA_HELP}${artRule}\n\nEXAM:\n${docText}`, `${AI} ממיר את המבחן…`);
   if (id !== curId) return;
   if (!out || !Array.isArray(out.parts) || !out.parts.length) { if (out !== null) { notes.unshift(`ההמרה עם ${AI} לא הושלמה, ומוצגת המרה בסיסית.`); renderStatus(); } return; }
   snapshot();
-  const keepSettings = exam.settings, title = exam.title, src = exam._source;
-  exam = normalize(keepArts(out, knownArts)); exam._source = src; if (!exam.title) exam.title = title;
+  const keepSettings = exam.settings, title = exam.title, src = exam._source, pics = exam.images;
+  exam = normalize(keepArts(out, knownArts)); exam._source = src; exam.images = pics; if (!exam.title) exam.title = title;
   exam.settings = Object.assign(keepSettings, { texts: exam.articles.length > 0 || keepSettings.texts });
   notes = [`הומר עם ${AI}. כדאי לעבור על השאלות.`]; editing = null;
+  changed(true);
+}
+// a PDF goes to Gemini as it is: Gemini reads the pages, tables and pictures itself
+async function convertPdf(data) {
+  const id = curId;
+  const out = await runClaude(`The attached PDF is a Hebrew school exam (Hebrew language / לשון, grades 11–12). Convert it into JSON for a typing-friendly exam app. Return ONLY the JSON.
+The PDF may also hold a cover page, general instructions, answer lines, draft pages ("טיוטה") and an appendix (נספח) with articles and a reference sheet: the appendix texts go into "articles"; skip covers, answer lines and drafts. Mark bold words with ** and underlined words with [קו:…] as they appear.
+Pictures cannot be copied: where a picture matters for a question (a comic, an ad, a chart), describe it briefly in Hebrew in parentheses, starting "בתמונה:", and include every word written in it.
+${SCHEMA_HELP}`, `${AI} קורא את ה-PDF וממיר את המבחן…`, [{ mime: 'application/pdf', data }]);
+  if (id !== curId) return;
+  if (!out || !Array.isArray(out.parts) || !out.parts.length) { if (out !== null) { notes.unshift(`${AI} לא הצליח להמיר את ה-PDF. אפשר לנסות שוב, או לשמור אותו ב-Word כ-‎.docx ולהעלות.`); renderStatus(); } return; }
+  snapshot();
+  const keepSettings = exam.settings, title = exam.title, src = exam._source;
+  exam = normalize(out); exam._source = src; exam.images = {}; if (!exam.title) exam.title = title;
+  exam.settings = Object.assign(keepSettings, { texts: exam.articles.length > 0 });
+  notes = [`הומר עם ${AI} מתוך ה-PDF. תמונות מה-PDF מתוארות במילים; אפשר להוסיף אותן בעריכה, בכפתור "תמונה".`]; editing = null;
   changed(true);
 }
 $('askForm').addEventListener('submit', async e => {
@@ -835,8 +912,8 @@ $('askForm').addEventListener('submit', async e => {
   const out = await runClaude(`Here is a Hebrew exam as JSON for a typing-friendly exam app (articles shortened to titles; keep them as they are). Apply the teacher's request and return the WHOLE updated exam JSON only.\n${SCHEMA_HELP}\n\nTEACHER'S REQUEST (Hebrew): ${req}\n\nEXAM JSON:\n${JSON.stringify(lean())}`, `${AI} משנה את המבחן…`);
   if (!out || !Array.isArray(out.parts)) return;
   snapshot();
-  const keepSettings = exam.settings, src = exam._source;
-  exam = normalize(keepArts(out, arts)); exam._source = src; exam.settings = Object.assign(keepSettings, out.settings || {});
+  const keepSettings = exam.settings, src = exam._source, pics = exam.images;
+  exam = normalize(keepArts(out, arts)); exam._source = src; exam.images = pics; exam.settings = Object.assign(keepSettings, out.settings || {});
   $('askIn').value = ''; notes = [`בוצע: ${req}`];
   changed(true);
 });

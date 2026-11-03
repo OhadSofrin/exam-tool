@@ -170,6 +170,9 @@ button { cursor: pointer; }
 .tk.ab small { font-size: .7rem; color: var(--muted); font-weight: 700; }
 .tk.ab b { font-family: var(--f-text); font-size: 1rem; color: var(--text); }
 .tk.rf { border-style: solid; background: var(--panel); }
+.tk.im { padding: 2px; background: var(--panel); }
+.tk.im img { display: block; max-height: 90px; max-width: 220px; border-radius: 4px; }
+.tk.bx { border: 1.5px solid var(--text); border-radius: 2px; background: none; color: var(--text); font-family: var(--f-text); font-weight: 500; }
 .tk.rt { letter-spacing: .05em; }
 .opt-ed { display: flex; flex-direction: column; gap: 6px; }
 .opt-row { display: flex; align-items: center; gap: 8px; }
@@ -246,9 +249,9 @@ button { cursor: pointer; }
         </div>
         <div class="upcard" id="upcard">
           <h2>מבחן חדש</h2>
-          <p>גררו לכאן את קובץ ה-Word של המבחן (‎.docx), או בחרו אותו מהמחשב.</p>
+          <p>גררו לכאן את קובץ המבחן (Word ‎.docx או PDF), או בחרו אותו מהמחשב.</p>
           <div class="row">
-            <label class="btn primary filebtn">בחירת קובץ Word<input type="file" id="file" accept=".docx,.html,.htm"></label>
+            <label class="btn primary filebtn">בחירת קובץ<input type="file" id="file" accept=".docx,.pdf,.html,.htm"></label>
             <button type="button" class="btn" data-home="blank">מבחן ריק</button>
             <button type="button" class="btn ghost" data-home="sample">פתיחת דוגמה</button>
             <button type="button" class="btn" id="aiSetBtn" hidden>חיבור ל-Gemini</button>

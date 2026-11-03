@@ -246,6 +246,43 @@ select.xm-a { padding: 3px 6px; cursor: pointer; font-size: .95em; }
 .xm-draft textarea.xm-a { flex: 1; border: 0; border-radius: 0; resize: none; background: var(--sheet); font-size: 1em; }
 .xm.phone .xm-scols { grid-template-columns: minmax(0, 1fr); }
 
+/* pictures, marked text, clause labels, punctuation */
+.xm-img { max-width: min(100%, 520px); max-height: 420px; height: auto; border-radius: 6px; border: 1px solid var(--line-soft); vertical-align: middle; }
+.xm-fig { margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.xm-fig figcaption { font-size: .82em; color: var(--muted); }
+.xm-para.pic { display: block; text-align: center; }
+.xm-para.pic .xm-img { max-width: 100%; max-height: none; }
+.xm-box { border: 1.5px solid var(--text); padding: 0 4px; border-radius: 2px; }
+.xm u { text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.xm-segs { display: flex; flex-direction: column; gap: 6px; }
+.xm-segr { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paper); border: 1px solid var(--line-soft); border-radius: 8px; padding: 5px 10px; }
+.xm-segr span { flex: 1; min-width: 10em; font-family: var(--f-text); font-size: 1.05em; }
+.xm-segr .xm-a { width: 13em; }
+.xm-punct { margin: 0; font-family: var(--f-text); font-size: 1.12em; line-height: 2.2; background: var(--paper); border: 1px solid var(--line-soft); border-radius: 8px; padding: 8px 12px; }
+.xm-pg { display: inline-block; vertical-align: middle; min-width: 14px; height: 1.6em; margin: 0 -2px 0 1px; padding: 0 2px; border: 0; border-radius: 4px; background: transparent; font-family: var(--f-text); font-size: 1.2em; font-weight: 700; color: var(--ink); line-height: 1; position: relative; }
+.xm-pg:not(.has)::after { content: ""; position: absolute; top: 30%; bottom: 30%; left: 50%; width: 1px; background: var(--line); }
+.xm-pg:hover { background: var(--ink-soft); }
+.xm-pmenu { position: fixed; z-index: 30; display: flex; flex-wrap: wrap; gap: 4px; max-width: 270px; padding: 6px; background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.18); }
+.xm-pmenu button { min-width: 2.2em; height: 2.2em; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-family: var(--f-text); font-size: 1.1em; font-weight: 700; }
+.xm-pmenu button:hover, .xm-pmenu button:focus-visible { border-color: var(--ink); color: var(--ink); }
+.xm-pmenu .clr { font-family: var(--f-ui); font-size: .85em; font-weight: 600; padding: 0 8px; color: var(--muted); }
+
+/* choosing a chapter or some of the questions */
+.xm-alt { border: 1.5px solid var(--ink); background: var(--ink-soft); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.xm-alt .xm-btn[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.xm-poff { display: none; margin: 6px 0 0; color: var(--muted); }
+.xm-pw.off .xm-poff { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.xm-pw.off .xm-q, .xm-pw.off .xm-pickinfo { display: none; }
+.xm-pw.off .xm-part h2 { color: var(--muted); }
+.xm-pickinfo { margin: 0; font-weight: 700; color: var(--muted); }
+.xm-pickinfo.ok { color: var(--done); }
+.xm-pickinfo.over { color: var(--partial); }
+.xm-pick { display: inline-flex; align-items: center; gap: 6px; font-size: .85em; font-weight: 700; color: var(--ink); margin-bottom: 4px; cursor: pointer; }
+.xm-q.unpicked { opacity: .55; }
+.xm-chip.off { opacity: .35; }
+.xm-warn { border: 1px solid var(--partial); background: var(--partial-soft); color: var(--partial); border-radius: 8px; padding: 6px 12px; margin-bottom: 10px; font-weight: 600; }
+.xm-warn p { margin: 4px 0; }
+
 /* converter preview: edit handles */
 .xm-q, .xm-part { position: relative; }
 .xm-edit { position: absolute; left: 10px; top: 10px; z-index: 2; border: 1px solid var(--ink); background: var(--sheet); color: var(--ink); border-radius: 99px; padding: 2px 12px; font-weight: 700; font-size: .82em; box-shadow: var(--shadow); }
@@ -426,6 +463,9 @@ button { cursor: pointer; }
 .tk.ab small { font-size: .7rem; color: var(--muted); font-weight: 700; }
 .tk.ab b { font-family: var(--f-text); font-size: 1rem; color: var(--text); }
 .tk.rf { border-style: solid; background: var(--panel); }
+.tk.im { padding: 2px; background: var(--panel); }
+.tk.im img { display: block; max-height: 90px; max-width: 220px; border-radius: 4px; }
+.tk.bx { border: 1.5px solid var(--text); border-radius: 2px; background: none; color: var(--text); font-family: var(--f-text); font-weight: 500; }
 .tk.rt { letter-spacing: .05em; }
 .opt-ed { display: flex; flex-direction: column; gap: 6px; }
 .opt-row { display: flex; align-items: center; gap: 8px; }
@@ -502,9 +542,9 @@ button { cursor: pointer; }
         </div>
         <div class="upcard" id="upcard">
           <h2>מבחן חדש</h2>
-          <p>גררו לכאן את קובץ ה-Word של המבחן (‎.docx), או בחרו אותו מהמחשב.</p>
+          <p>גררו לכאן את קובץ המבחן (Word ‎.docx או PDF), או בחרו אותו מהמחשב.</p>
           <div class="row">
-            <label class="btn primary filebtn">בחירת קובץ Word<input type="file" id="file" accept=".docx,.html,.htm"></label>
+            <label class="btn primary filebtn">בחירת קובץ<input type="file" id="file" accept=".docx,.pdf,.html,.htm"></label>
             <button type="button" class="btn" data-home="blank">מבחן ריק</button>
             <button type="button" class="btn ghost" data-home="sample">פתיחת דוגמה</button>
             <button type="button" class="btn" id="aiSetBtn" hidden>חיבור ל-Gemini</button>
@@ -553,8 +593,11 @@ button { cursor: pointer; }
    Text tokens:  ___ blank · {a / b / c} choose one · [שורש] root boxes · **bold**
                  [בניין] [גזרה] [תפקיד] [חלק דיבר] [סוג משפט] [פסוקית] [קשר לוגי] [תצורה] [זמן] [גוף] [מין ומספר] ready-made lists
                  [רשימה:א / ב / ג] a list of your own · [מעל:מילה] box above a word · [מעל:מילה|תפקיד] list above a word
-                 [מאמר 2, פס' 3] link to an article
-   Blocks: text · passage · mc · long · table · essay · mark (click words) · split (mark boundaries) · sort · match */
+                 [מאמר 2, פס' 3] or [מאמר 2, פסקה ג] link to an article · [קו:מילים] underlined · [מסגרת:מילים] boxed
+                 [תמונה:img1] a picture from data.images
+   Blocks: text · passage · mc (num: options (1), (2)…) · long · table · essay · mark (click words) · split (mark boundaries;
+           label: a list name or "free", to name every part) · punct (add punctuation) · sort · match · img
+   Parts: alt (parts with the same alt are alternatives: answer one) · pick (answer only that many of the questions) */
 const XM_BINYANIM = ['פָּעַל (קל)', 'נִפְעַל', 'פִּעֵל', 'פֻּעַל', 'הִפְעִיל', 'הֻפְעַל', 'הִתְפַּעֵל'];
 const XM_LISTS = {
   'בניין': XM_BINYANIM,
@@ -592,7 +635,13 @@ function mountExam(root, data, opts) {
   const S = {}, FIELD = {}, ITEMS = [], SUBS = [];
   let cur = null, fc = 0;
   const nf = (type, label) => { const id = 'f' + (++fc); cur.fields.push(id); FIELD[id] = { item: cur, type, label: label || '' }; return id; };
-  const ctx = (str, off) => str.slice(Math.max(0, off - 50), off).replace(/\*\*|_{3,}|\{[^}]*\}|\[[^\]]*\]/g, ' ').trim().split(/\s+/).slice(-4).join(' ');
+  // the label of an answer place: the few words just before it, on its own line and after any earlier answer place
+  const ctx = (str, off) => {
+    const s = str.slice(Math.max(0, off - 60), off).split('\n').pop().replace(/^[^{[]*?[}\]]/, '').replace(/\*\*/g, '');
+    const parts = s.split(/_{3,}|\{[^}]*\}|\[[^\]]*\]/).map(x => x.trim());
+    const t = parts.pop() || parts.pop() || '';
+    return t.split(/\s+/).slice(-4).join(' ');
+  };
 
   function field(type, label, o) {
     o = o || {};
@@ -612,36 +661,64 @@ function mountExam(root, data, opts) {
     return `<span class="xm-ch ${cls || ''}" role="radiogroup">${opts2.map(v => `<button type="button" class="xm-opt" role="radio" aria-checked="false" data-f="${id}" data-v="${esc(v)}">${esc(v)}</button>`).join('')}</span>`;
   }
   const LISTNAMES = Object.keys(LISTS).join('|');
-  const TOK = new RegExp(String.raw`\*\*(.+?)\*\*|(_{3,})|\{([^{}]+?\s\/\s[^{}]+?)\}|\[שורש\]|\[(${LISTNAMES})\]|\[רשימה:([^\]]+)\]|\[מעל:([^\]|]+)(?:\|([^\]]+))?\]|\[(?:מאמר|טקסט|קטע)\s*(\d+)(?:\s*,\s*פס['׳]?\s*(\d+))?\]`, 'g');
+  // pictures from the Word file live in data.images, by id; only real images are shown
+  const IMG = data.images || {};
+  const imgHtml = (id, cls) => /^data:image\//.test(IMG[id] || '') ? `<img class="${cls || 'xm-img'}" src="${IMG[id]}" alt="">` : '';
+  // paragraphs may be counted 1, 2, 3 or א, ב, ג (a reference may use either)
+  const HEBN = [[400, 'ת'], [300, 'ש'], [200, 'ר'], [100, 'ק'], [90, 'צ'], [80, 'פ'], [70, 'ע'], [60, 'ס'], [50, 'נ'], [40, 'מ'], [30, 'ל'], [20, 'כ'], [10, 'י'], [9, 'ט'], [8, 'ח'], [7, 'ז'], [6, 'ו'], [5, 'ה'], [4, 'ד'], [3, 'ג'], [2, 'ב'], [1, 'א']];
+  const heb = n => { if (n === 15) return 'טו'; if (n === 16) return 'טז'; let s = ''; for (const [v, l] of HEBN) while (n >= v) { s += l; n -= v; } return s; };
+  const parNum = p => /^\d+$/.test(p) ? +p : [...String(p || '')].reduce((t, c) => t + ((HEBN.find(x => x[1] === c) || [0])[0]), 0);
+  const parLab = (A, n) => A && A.pl === 'letters' ? `פסקה ${heb(n)}` : `פס׳ ${n}`;
+  const TOK = new RegExp(String.raw`\*\*(?<b>.+?)\*\*|(?<blank>_{3,})|\{(?<ch>[^{}]+?\s\/\s[^{}]+?)\}|(?<root>\[שורש\])|\[(?<ls>${LISTNAMES})\]|\[רשימה:(?<cl>[^\]]+)\]|\[מעל:(?<ab>[^\]|]+)(?:\|(?<abl>[^\]]+))?\]|\[קו:(?<u>[^\]]+)\]|\[מסגרת:(?<box>[^\]]+)\]|\[תמונה:(?<img>[^\]\s]+)\]|\[(?:מאמר|טקסט|קטע)\s*(?<art>\d+)(?:\s*,\s*(?:פס['׳]?|פסקה)\s*(?<par>\d+|[א-ת]{1,2}))?\]`, 'g');
   function rich(text) {
     const s = String(text || '');
     let out = '', last = 0, m;
     TOK.lastIndex = 0;
+    const inner = (tag, cls, v) => { const save = TOK.lastIndex; const h = `<${tag}${cls ? ` class="${cls}"` : ''}>${rich(v)}</${tag}>`; TOK.lastIndex = save; return h; };
     while ((m = TOK.exec(s))) {
       out += esc(s.slice(last, m.index)).replace(/\n/g, '<br>');
       last = TOK.lastIndex;
-      const label = ctx(s, m.index);
-      if (m[1] !== undefined) { const save = TOK.lastIndex; out += `<b>${rich(m[1])}</b>`; TOK.lastIndex = save; }
-      else if (m[2]) out += field('text', label, { wide: m[2].length > 30 });
-      else if (m[3]) out += choiceHtml(m[3].split(/\s\/\s/).map(x => x.trim()).filter(Boolean), label);
-      else if (m[0] === '[שורש]') out += field('root', label ? label + ' · שורש' : 'שורש');
-      else if (m[4]) out += field('list', label ? `${label} · ${m[4]}` : m[4], { list: LISTS[m[4]] });
-      else if (m[5]) out += field('list', label || 'בחירה', { list: listOf(m[5]) || [m[5]] });
-      else if (m[6]) {
-        const w = m[6].trim(), list = m[7] ? listOf(m[7]) : null;
-        const inner = list ? field('list', `מעל ${w}`, { list }) : (() => { const id = nf('text', w); return `<input class="xm-a" data-f="${id}" type="text" autocomplete="off" spellcheck="false" aria-label="מעל ${esc(w)}">`; })();
-        out += `<span class="xm-lw">${inner}<b>${esc(w)}</b></span>`;
+      const g = m.groups, label = ctx(s, m.index);
+      if (g.b !== undefined) out += inner('b', '', g.b);
+      else if (g.u !== undefined) out += inner('u', '', g.u);
+      else if (g.box !== undefined) out += inner('span', 'xm-box', g.box);
+      else if (g.img) out += imgHtml(g.img) || '';
+      else if (g.blank) out += field('text', label, { wide: g.blank.length > 30 });
+      else if (g.ch) out += choiceHtml(g.ch.split(/\s\/\s/).map(x => x.trim()).filter(Boolean), label);
+      else if (g.root) out += field('root', label ? label + ' · שורש' : 'שורש');
+      else if (g.ls) out += field('list', label ? `${label} · ${g.ls}` : g.ls, { list: LISTS[g.ls] });
+      else if (g.cl) out += field('list', label || 'בחירה', { list: listOf(g.cl) || [g.cl] });
+      else if (g.ab) {
+        const w = g.ab.trim(), list = g.abl ? listOf(g.abl) : null;
+        const box = list ? field('list', `מעל ${w}`, { list }) : (() => { const id = nf('text', w); return `<input class="xm-a" data-f="${id}" type="text" autocomplete="off" spellcheck="false" aria-label="מעל ${esc(w)}">`; })();
+        out += `<span class="xm-lw">${box}<b>${esc(w)}</b></span>`;
       }
-      else if (m[8]) out += arts[+m[8] - 1] ? `<button type="button" class="xm-ref" data-a="${+m[8] - 1}" data-p="${m[9] || ''}">${esc(set.textItem)} ${m[8]}${m[9] ? ` · פס׳ ${m[9]}` : ''}</button>` : esc(m[0]);
+      else if (g.art) {
+        const a = +g.art - 1, p = g.par ? parNum(g.par) : 0;
+        out += arts[a] ? `<button type="button" class="xm-ref" data-a="${a}" data-p="${p || ''}">${esc(set.textItem)} ${g.art}${p ? ` · ${parLab(arts[a], p)}` : ''}</button>` : esc(m[0]);
+      }
     }
     return out + esc(s.slice(last)).replace(/\n/g, '<br>');
   }
+  // article paragraphs: formatting and pictures, no answer places
+  const ATOK = /\*\*(.+?)\*\*|\[קו:([^\]]+)\]|\[מסגרת:([^\]]+)\]|\[תמונה:([^\]\s]+)\]/g;
+  const artText = t => esc(String(t || '')).replace(/\[תמונה:([^\]\s]+)\]/g, (x, id) => imgHtml(id) || '').replace(ATOK, (x, b, u, box) => b !== undefined ? `<b>${b}</b>` : u !== undefined ? `<u>${u}</u>` : box !== undefined ? `<span class="xm-box">${box}</span>` : x).replace(/\n/g, '<br>');
+  const onlyImg = t => /^\s*\[תמונה:[^\]\s]+\]\s*$/.test(String(t || ''));
+  const MARKS = ['.', ',', ';', ':', '?', '!', '–', '״', '(', ')'];
   function block(b, i) {
     const t = b.t || 'text';
     if (t === 'passage') return `<p class="xm-passage">${rich(b.v)}</p>`;
+    if (t === 'img') { const h = imgHtml(b.src); return h ? `<figure class="xm-fig">${h}${b.cap ? `<figcaption>${esc(b.cap)}</figcaption>` : ''}</figure>` : ''; }
     if (t === 'mc') {
-      const id = nf('choice', 'תשובה'); const L = 'אבגדהוזחטי';
-      return `<div class="xm-mc" role="radiogroup">${(b.opts || []).map((o, k) => `<button type="button" class="xm-opt xm-mco" role="radio" aria-checked="false" data-f="${id}" data-v="${esc(L[k] + '. ' + o)}"><span class="xm-ml">${L[k]}</span><span>${rich(o)}</span></button>`).join('')}</div>`;
+      // options labelled א, ב, ג like most exams, or (1), (2), (3) when the exam numbers them
+      const id = nf('choice', 'תשובה'); const L = k => b.num ? `(${k + 1})` : 'אבגדהוזחטי'[k];
+      return `<div class="xm-mc" role="radiogroup">${(b.opts || []).map((o, k) => `<button type="button" class="xm-opt xm-mco" role="radio" aria-checked="false" data-f="${id}" data-v="${esc(L(k) + (b.num ? ' ' : '. ') + o)}"><span class="xm-ml">${L(k)}</span><span>${rich(o)}</span></button>`).join('')}</div>`;
+    }
+    if (t === 'punct') {
+      // a text without punctuation: the student adds a mark in the gap after any word
+      const words = String(b.v || '').split(/\s+/).filter(Boolean);
+      const id = nf('punct', 'הפיסוק'); FIELD[id].words = words.map(w => w.replace(/\*\*/g, '')); FIELD[id].marks = (b.marks && b.marks.length ? b.marks : MARKS);
+      return `<p class="xm-punct">${words.map((w, k) => `<span class="xm-sw">${fmt(w)}</span><button type="button" class="xm-pg" data-pu="${id}" data-i="${k}" aria-label="סימן פיסוק אחרי ${esc(w.replace(/\*\*/g, ''))}"></button>`).join(' ')}</p><p class="xm-hint">לחצו אחרי מילה כדי להוסיף שם סימן פיסוק. לחיצה על סימן קיים מאפשרת להחליף או למחוק אותו.</p>`;
     }
     if (t === 'long') { const id = nf('text', 'תשובה'); return `<textarea class="xm-a" data-f="${id}" rows="${b.rows || 3}" spellcheck="false" placeholder="כתבו כאן את התשובה" aria-label="תשובה"></textarea>`; }
     if (t === 'essay') {
@@ -652,7 +729,10 @@ function mountExam(root, data, opts) {
       const words = String(b.v || '').split(/\s+/).filter(Boolean);
       const id = nf('set', t === 'mark' ? 'המילים שסומנו' : 'החלוקה'); FIELD[id].words = words.map(w => w.replace(/\*\*/g, '')); FIELD[id].kind = t;
       if (t === 'mark') return `<p class="xm-mark">${words.map((w, k) => `<button type="button" class="xm-w" data-mk="${id}" data-i="${k}" aria-pressed="false">${fmt(w)}</button>`).join(' ')}</p><p class="xm-hint">לחצו על מילה כדי לסמן אותה, ולחיצה נוספת מבטלת.</p>`;
-      return `<p class="xm-split">${words.map((w, k) => `<span class="xm-sw">${fmt(w)}</span>` + (k < words.length - 1 ? `<button type="button" class="xm-gap" data-sp="${id}" data-i="${k}" aria-pressed="false" aria-label="גבול אחרי ${esc(w.replace(/\*\*/g, ''))}"></button>` : '')).join('')}</p><p class="xm-hint">לחצו על הרווח בין שתי מילים כדי לסמן שם גבול (/), ולחיצה נוספת מבטלת.</p>`;
+      // with a label, every part between the boundaries also gets a role, a clause type or free text
+      if (b.label) FIELD[id].seg = { name: b.label === 'free' ? '' : b.label, list: b.label === 'free' ? null : listOf(b.label) };
+      const segHint = b.label ? ` אחר כך ציינו ליד כל חלק את ${b.label === 'free' ? 'מה שנדרש' : 'ה' + b.label}.` : '';
+      return `<p class="xm-split">${words.map((w, k) => `<span class="xm-sw">${fmt(w)}</span>` + (k < words.length - 1 ? `<button type="button" class="xm-gap" data-sp="${id}" data-i="${k}" aria-pressed="false" aria-label="גבול אחרי ${esc(w.replace(/\*\*/g, ''))}"></button>` : '')).join('')}</p>${b.label ? `<div class="xm-segs" data-segs="${id}"></div>` : ''}<p class="xm-hint">לחצו על הרווח בין שתי מילים כדי לסמן שם גבול (/), ולחיצה נוספת מבטלת.${segHint}</p>`;
     }
     if (t === 'sort') {
       const items = (b.items || []).filter(Boolean), n = Math.max(2, Math.min(5, +b.cols || 2)), sid = 'srt' + (++sortN);
@@ -687,16 +767,28 @@ function mountExam(root, data, opts) {
   const ptsTxt = p => (p || p === 0) && p !== '' ? `<span class="xm-pts">${p} נק׳</span>` : '';
 
   let sheet = '';
-  if (data.instructions && data.instructions.length) sheet += `<details class="xm-instr" open><summary>הוראות לנבחן</summary>${data.instructions.map(l => `<p>${esc(l)}</p>`).join('')}</details>`;
-  (data.parts || []).forEach((part, pi) => {
+  if (data.instructions && data.instructions.length) sheet += `<details class="xm-instr" open><summary>הוראות לנבחן</summary>${data.instructions.map(l => `<p>${artText(l)}</p>`).join('')}</details>`;
+  // choices: parts that share an "alt" group are alternatives (the student answers one of them),
+  // and a part with "pick" asks for only that many of its questions
+  const PARTS = data.parts || [], ALT = {};
+  PARTS.forEach((p, pi) => { if (p.alt) (ALT[p.alt] = ALT[p.alt] || []).push(pi); });
+  const altOf = pi => { const g = PARTS[pi] && PARTS[pi].alt; return g && ALT[g].length > 1 ? g : ''; };
+  const pickOf = pi => { const p = PARTS[pi], n = Math.floor(+(p && p.pick) || 0); return n > 0 && n < (p.qs || []).length ? n : 0; };
+  PARTS.forEach((part, pi) => {
+    const grp = altOf(pi);
+    if (grp && ALT[grp][0] === pi) sheet += `<div class="xm-alt" data-alt="${esc(grp)}"><b>בפרקים הבאים בוחרים פרק אחד. באיזה פרק תענו?</b><div class="xm-row">${ALT[grp].map(k => `<button type="button" class="xm-btn" data-altp="${k}" aria-pressed="false">${esc(PARTS[k].title || 'פרק ' + (k + 1))}</button>`).join('')}</div></div>`;
+    sheet += `<div class="xm-pw" data-pw="${pi}">`;
     if (part.title || opts.editable) sheet += `<div class="xm-part"><h2>${esc(part.title || 'חלק ללא שם')}</h2>${part.pts ? `<span>${esc(part.pts)}</span>` : ''}${opts.editable ? `<button type="button" class="xm-edit" data-editpart="${pi}">✎ עריכה</button>` : ''}</div>`;
     if (part.note) sheet += `<p class="xm-pnote">${rich(part.note)}</p>`;
+    if (pickOf(pi)) sheet += `<p class="xm-pickinfo" data-pickinfo="${pi}"></p>`;
+    if (grp) sheet += `<p class="xm-poff">לא בחרתם בפרק הזה. <button type="button" class="xm-btn" data-altp="${pi}">לענות על הפרק הזה</button></p>`;
     (part.qs || []).forEach((q, qi) => {
       const qid = `xq${pi}-${qi}`;
       sheet += `<section class="xm-q" id="${qid}">${opts.editable ? `<button type="button" class="xm-edit" data-edit="${pi}.${qi}">✎ עריכה</button>` : ''}`;
+      if (pickOf(pi)) sheet += `<label class="xm-pick"><input type="checkbox" data-pick="${pi}.${qi}"> בחרתי לענות על שאלה ${esc(q.n)}</label>`;
       const hasIntro = q.intro && q.intro.length;
       if (hasIntro) {
-        cur = { id: qid + 'i', label: String(q.n || ''), nav: String(q.n || ''), part: pi, fields: [] };
+        cur = { id: qid + 'i', label: String(q.n || ''), nav: String(q.n || ''), part: pi, q: qi, fields: [] };
         const html = q.intro.map(block).join('');
         if (cur.fields.length) ITEMS.push(cur);
         sheet += `<div class="xm-qh" id="${cur.id}"><span class="xm-qn">${esc(q.n)}.</span><div class="xm-qi">${html}</div></div>`;
@@ -704,7 +796,7 @@ function mountExam(root, data, opts) {
       (q.subs || []).forEach((s, si) => {
         const id = `${qid}-${si}`;
         const lab = String(s.l || '');
-        cur = { id, label: String(q.n || '') + lab, nav: String(q.n || '') + lab.replace(/[()\s]/g, ''), part: pi, fields: [] };
+        cur = { id, label: String(q.n || '') + lab, nav: String(q.n || '') + lab.replace(/[()\s]/g, ''), part: pi, q: qi, fields: [] };
         const blocks = s.blocks || [];
         const first = blocks[0] && (blocks[0].t || 'text') === 'text' ? blocks[0] : null;
         const headHtml = first ? rich(first.v) : '';
@@ -716,6 +808,7 @@ function mountExam(root, data, opts) {
       });
       sheet += `</section>`;
     });
+    sheet += `</div>`;
   });
   if (opts.editable) sheet += `<div class="xm-row" style="justify-content:center"><button type="button" class="xm-btn" data-addq>+ שאלה חדשה בסוף</button></div>`;
   sheet += `<div class="xm-end"><span>סוף המבחן. לפני ההגשה יוצגו כל הסעיפים שעדיין חסרים.</span><button type="button" class="xm-btn primary" data-act="submit">מעבר להגשה</button></div>`;
@@ -785,11 +878,54 @@ function mountExam(root, data, opts) {
   const saveUi = () => store.set('ui', ui);
 
   const filled = id => {
-    const v = S[id], t = FIELD[id].type;
+    const v = S[id], f = FIELD[id], t = f.type;
     if (t === 'root') return Array.isArray(v) && v.filter(Boolean).length >= 3;
-    if (t === 'set') return Array.isArray(v) && v.length > 0;
+    if (t === 'set') return Array.isArray(v) && v.length > 0 && (!f.seg || Object.values(S[id + ':L'] || {}).some(x => String(x).trim()));
+    if (t === 'punct') return !!v && Object.values(v).some(Boolean);
     return v != null && String(v).trim() !== '';
   };
+  // which parts and questions the student is answering
+  const qChosen = (pi, qi) => !!(meta.pick && meta.pick[pi + '.' + qi]) || ITEMS.some(i => i.part === pi && i.q === qi && i.fields.some(filled));
+  const partOn = pi => { const g = altOf(pi); return !g || !meta.alt || meta.alt[g] == null || meta.alt[g] === pi; };
+  const active = it => partOn(it.part) && (!pickOf(it.part) || qChosen(it.part, it.q));
+  const pickCount = pi => (PARTS[pi].qs || []).filter((x, qi) => qChosen(pi, qi)).length;
+  function applyChoices() {
+    PARTS.forEach((p, pi) => {
+      const w = q(`[data-pw="${pi}"]`); if (w) w.classList.toggle('off', !partOn(pi));
+      const n = pickOf(pi); if (!n) return;
+      const k = pickCount(pi), info = q(`[data-pickinfo="${pi}"]`);
+      if (info) { info.textContent = `בחלק הזה עונים על ${n} מתוך ${p.qs.length} השאלות. בחרתם ${k}.${k > n ? ` זה יותר מ-${n}.` : ''}`; info.classList.toggle('over', k > n); info.classList.toggle('ok', k === n); }
+      p.qs.forEach((x, qi) => {
+        const c = q(`[data-pick="${pi}.${qi}"]`), on = qChosen(pi, qi); if (c) c.checked = on;
+        const sec = q(`#xq${pi}-${qi}`); if (sec) sec.classList.toggle('unpicked', !on && k >= n);
+      });
+    });
+    Object.keys(ALT).forEach(g => qa(`[data-alt="${g}"] [data-altp]`).forEach(b => b.setAttribute('aria-pressed', String(!!meta.alt && meta.alt[g] === +b.dataset.altp))));
+  }
+  function renderSegs(id) {
+    const box = q(`[data-segs="${id}"]`), f = FIELD[id]; if (!box || !f.seg) return;
+    const cuts = S[id] || [], labs = S[id + ':L'] || {}, segs = []; let st = 0;
+    [...cuts, f.words.length - 1].forEach(c => { if (c >= st) { segs.push([st, c]); st = c + 1; } });
+    box.innerHTML = segs.map(([a, z]) => {
+      const v = labs[a] || '', txt = f.words.slice(a, z + 1).join(' ');
+      const ctl = f.seg.list ? `<select class="xm-a${v ? ' has' : ''}" data-sl="${id}" data-st="${a}" aria-label="${esc(txt)}"><option value="">${esc(f.seg.name)}…</option>${f.seg.list.map(o => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`
+        : `<input class="xm-a${v ? ' has' : ''}" data-sl="${id}" data-st="${a}" type="text" value="${esc(v)}" autocomplete="off" spellcheck="false" aria-label="${esc(txt)}">`;
+      return `<div class="xm-segr"><span>${esc(txt)}</span>${ctl}</div>`;
+    }).join('');
+  }
+  function setSeg(el) { const id = el.dataset.sl, labs = Object.assign({}, S[id + ':L'] || {}); labs[el.dataset.st] = el.value; S[id + ':L'] = labs; markHas(el); save(); refresh(FIELD[id].item); }
+  let pmenu = null;
+  const closePunct = () => { if (pmenu) { pmenu.remove(); pmenu = null; } };
+  function openPunct(btn) {
+    closePunct();
+    const id = btn.dataset.pu, f = FIELD[id], r = btn.getBoundingClientRect();
+    const m = document.createElement('div'); m.className = 'xm-pmenu'; m.setAttribute('role', 'menu');
+    m.dataset.pu = id; m.dataset.i = btn.dataset.i;
+    m.innerHTML = f.marks.map(x => `<button type="button" role="menuitem" data-pm="${esc(x)}">${esc(x)}</button>`).join('') + '<button type="button" role="menuitem" class="clr" data-pm="">ללא</button>';
+    m.style.top = Math.min(window.innerHeight - 60, r.bottom + 4) + 'px'; m.style.left = Math.max(4, Math.min(window.innerWidth - 280, r.left - 120)) + 'px';
+    root.appendChild(m); pmenu = m; m.querySelector('button').focus();
+  }
+  function showPunct(id) { const v = S[id] || {}; qa(`[data-pu="${id}"]`).forEach(b => { const x = v[b.dataset.i] || ''; b.textContent = x; b.classList.toggle('has', !!x); }); }
   const words = s => (String(s || '').trim().match(/\S+/g) || []).length;
   function essayCount(id) {
     const el = q(`[data-wc="${id}"]`); if (!el) return;
@@ -811,14 +947,17 @@ function mountExam(root, data, opts) {
   function place(id, col) { picked = null; setVal(id, col); Object.keys(SORTS).forEach(renderSort); }
   const status = it => { const n = it.fields.filter(filled).length; return n === 0 ? 'empty' : n === it.fields.length ? 'done' : 'partial'; };
   function refresh(only) {
-    (only ? [only] : ITEMS).forEach(i => {
+    applyChoices();
+    // a choice can change which items count, so the chips of every item are refreshed
+    ITEMS.forEach(i => {
       const st = status(i);
-      const dot = root.querySelector(`#${i.id} .xm-st`); if (dot) dot.className = 'xm-st ' + st;
-      const ch = q(`[data-go="${i.id}"]`); if (ch) ch.className = 'xm-chip ' + st + (ch.classList.contains('here') ? ' here' : '');
+      if (!only || i === only) { const dot = root.querySelector(`#${i.id} .xm-st`); if (dot) dot.className = 'xm-st ' + st; }
+      const ch = q(`[data-go="${i.id}"]`); if (ch) ch.className = 'xm-chip ' + st + (active(i) ? '' : ' off') + (ch.classList.contains('here') ? ' here' : '');
     });
-    let d = 0, p = 0; ITEMS.forEach(i => { const s = status(i); if (s === 'done') d++; else if (s === 'partial') p++; });
-    const n = ITEMS.length || 1;
-    q('[data-prog]').textContent = `${d}/${ITEMS.length}`;
+    const act = ITEMS.filter(active);
+    let d = 0, p = 0; act.forEach(i => { const s = status(i); if (s === 'done') d++; else if (s === 'partial') p++; });
+    const n = act.length || 1;
+    q('[data-prog]').textContent = `${d}/${act.length}`;
     q('[data-bd]').style.width = d / n * 100 + '%'; q('[data-bp]').style.width = p / n * 100 + '%';
   }
   const markHas = el => el.classList.toggle('has', el.value.trim() !== '');
@@ -827,6 +966,7 @@ function mountExam(root, data, opts) {
     qa('[data-f]').forEach(el => { const id = el.dataset.f; if (el.classList.contains('xm-opt')) el.setAttribute('aria-checked', String(S[id] === el.dataset.v)); else { el.value = S[id] == null ? '' : S[id]; markHas(el); } });
     qa('[data-rf]').forEach(el => { const v = S[el.dataset.rf] || []; el.value = v[+el.dataset.i] || ''; markHas(el); });
     qa('[data-mk], [data-sp]').forEach(el => { const v = S[el.dataset.mk || el.dataset.sp] || []; el.setAttribute('aria-pressed', String(v.includes(+el.dataset.i))); });
+    Object.keys(FIELD).forEach(id => { if (FIELD[id].seg) renderSegs(id); if (FIELD[id].type === 'punct') showPunct(id); });
     Object.keys(SORTS).forEach(renderSort);
     Object.keys(FIELD).forEach(id => { if (FIELD[id].essay) essayCount(id); });
     q('[data-name]').value = meta.name || ''; const ex = q('[data-ext]'); if (ex) ex.checked = !!meta.ext;
@@ -859,7 +999,9 @@ function mountExam(root, data, opts) {
     curArt = a; const A = arts[a];
     qa('.xm-tab').forEach(t => t.setAttribute('aria-selected', String(+t.dataset.tab === a)));
     const ab = q('[data-ab]');
-    ab.innerHTML = `<h4>${esc(A.title || set.textItem + ' ' + (a + 1))}</h4>${A.by ? `<p class="xm-by">${esc(A.by)}</p>` : ''}${(A.ps || []).map((t, i) => `<div class="xm-para" data-pp="${i + 1}"><span>פס׳ ${i + 1}</span><p>${esc(t)}</p></div>`).join('')}`;
+    // a paragraph that is only a picture (a chart, an infographic) is shown without a number
+    let n = 0;
+    ab.innerHTML = `<h4>${esc(A.title || set.textItem + ' ' + (a + 1))}</h4>${A.by ? `<p class="xm-by">${esc(A.by)}</p>` : ''}${(A.ps || []).map(t => onlyImg(t) ? `<div class="xm-para pic">${artText(t)}</div>` : `<div class="xm-para" data-pp="${++n}"><span>${parLab(A, n)}</span><p>${artText(t)}</p></div>`).join('')}`;
     const el = p && ab.querySelector(`[data-pp="${p}"]`);
     if (el) requestAnimationFrame(() => { ab.scrollTop = el.offsetTop - 8; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); });
     else ab.scrollTop = 0;
@@ -902,6 +1044,7 @@ function mountExam(root, data, opts) {
     if (t.hasAttribute('data-name')) { meta.name = t.value; save(); return; }
     if (t.hasAttribute('data-draftta')) { meta.draft = t.value; save(); return; }
     if (t.dataset.f) { markHas(t); setVal(t.dataset.f, t.value); if (FIELD[t.dataset.f].essay) essayCount(t.dataset.f); return; }
+    if (t.dataset.sl && t.tagName === 'INPUT') { setSeg(t); return; }
     if (t.dataset.rf) {
       t.value = t.value.replace(/[^א-ת]/g, '').slice(-1); markHas(t);
       const id = t.dataset.rf, arr = (S[id] || ['', '', '', '']).slice(); arr[+t.dataset.i] = t.value; setVal(id, arr);
@@ -910,12 +1053,14 @@ function mountExam(root, data, opts) {
   });
   root.addEventListener('change', e => {
     if (e.target.matches('select[data-f]')) { markHas(e.target); setVal(e.target.dataset.f, e.target.value); }
+    if (e.target.matches('select[data-sl]')) setSeg(e.target);
+    if (e.target.hasAttribute('data-pick')) { meta.pick = Object.assign({}, meta.pick, { [e.target.dataset.pick]: e.target.checked }); save(); refresh(); }
     if (e.target.hasAttribute('data-ext')) { meta.ext = e.target.checked; save(); tick(); }
   });
   root.addEventListener('keydown', e => {
     const t = e.target;
     if (t.dataset && t.dataset.rf && e.key === 'Backspace' && !t.value) { const pv = t.parentElement.querySelector(`[data-i="${+t.dataset.i - 1}"]`); if (pv) { e.preventDefault(); pv.focus(); } }
-    if (e.key === 'Escape') { const a = q('[data-arts]'); if (a && a.classList.contains('full')) { setFull(false); return; } q('[data-modal]').hidden = true; if (narrow()) setArts(false); }
+    if (e.key === 'Escape') { if (pmenu) { const b = q(`[data-pu="${pmenu.dataset.pu}"][data-i="${pmenu.dataset.i}"]`); closePunct(); if (b) b.focus(); return; } const a = q('[data-arts]'); if (a && a.classList.contains('full')) { setFull(false); return; } q('[data-modal]').hidden = true; if (narrow()) setArts(false); }
   });
   root.addEventListener('dragstart', e => { const c = e.target.closest && e.target.closest('[data-chip]'); if (c) { e.dataTransfer.setData('text/plain', c.dataset.chip); e.dataTransfer.effectAllowed = 'move'; } });
   root.addEventListener('dragover', e => { const d = e.target.closest && e.target.closest('.xm-drop'); if (d) { e.preventDefault(); d.classList.add('over'); } });
@@ -936,13 +1081,28 @@ function mountExam(root, data, opts) {
   }
   root.addEventListener('click', e => {
     const t = e.target;
+    const pm = t.closest('[data-pm]');
+    if (pm && pmenu) {
+      const id = pmenu.dataset.pu, k = pmenu.dataset.i, v = Object.assign({}, S[id] || {});
+      if (pm.dataset.pm) v[k] = pm.dataset.pm; else delete v[k];
+      closePunct(); setVal(id, v); showPunct(id); const b = q(`[data-pu="${id}"][data-i="${k}"]`); if (b) b.focus(); return;
+    }
+    if (pmenu && !t.closest('.xm-pmenu')) closePunct();
+    const pg = t.closest('[data-pu]'); if (pg) { openPunct(pg); return; }
+    const altp = t.closest('[data-altp]');
+    if (altp) {
+      const pi = +altp.dataset.altp, g = altOf(pi); if (!g) return;
+      meta.alt = Object.assign({}, meta.alt, { [g]: pi }); save(); refresh();
+      const w = q(`[data-pw="${pi}"]`), col = q('[data-col]'); if (w && altp.closest('.xm-poff')) col.scrollTop += w.getBoundingClientRect().top - col.getBoundingClientRect().top - 12;
+      return;
+    }
     const opt = t.closest('.xm-opt[data-f]');
     if (opt) { const id = opt.dataset.f, v = S[id] === opt.dataset.v ? '' : opt.dataset.v; qa(`.xm-opt[data-f="${id}"]`).forEach(o => o.setAttribute('aria-checked', String(o.dataset.v === v))); setVal(id, v); return; }
     const tog = t.closest('[data-mk], [data-sp]');
     if (tog) {
       const id = tog.dataset.mk || tog.dataset.sp, i = +tog.dataset.i, v = (S[id] || []).slice(), k = v.indexOf(i);
       if (k >= 0) v.splice(k, 1); else v.push(i);
-      v.sort((a, b) => a - b); tog.setAttribute('aria-pressed', String(k < 0)); setVal(id, v); return;
+      v.sort((a, b) => a - b); tog.setAttribute('aria-pressed', String(k < 0)); setVal(id, v); if (FIELD[id].seg) renderSegs(id); return;
     }
     const chip = t.closest('[data-chip]');
     if (chip) { const id = chip.dataset.chip; picked = picked === id ? null : id; Object.keys(SORTS).forEach(renderSort); const again = q(`[data-chip="${id}"]`); if (again) again.focus(); return; }
@@ -992,31 +1152,50 @@ function mountExam(root, data, opts) {
   const timer = setInterval(() => { if (!root.isConnected) clearInterval(timer); else tick(); }, 1000);
 
   /* ---------- submit ---------- */
+  function choiceWarnings() {
+    const w = [];
+    Object.keys(ALT).forEach(g => { if (ALT[g].length > 1 && (!meta.alt || meta.alt[g] == null)) w.push(`לא בחרתם באיזה פרק לענות: ${ALT[g].map(pi => PARTS[pi].title || 'פרק ' + (pi + 1)).join(' או ')}.`); });
+    PARTS.forEach((p, pi) => {
+      const n = pickOf(pi); if (!n || !partOn(pi)) return;
+      const k = pickCount(pi), name = p.title || 'חלק ' + (pi + 1);
+      if (k < n) w.push(`ב${name} צריך לענות על ${n} שאלות, ובחרתם ${k}.`);
+      if (k > n) w.push(`ב${name} עניתם על ${k} שאלות, אבל צריך לענות רק על ${n}.`);
+    });
+    return w;
+  }
   function openSubmit() {
-    const missing = ITEMS.filter(i => status(i) !== 'done');
-    q('[data-mbody]').innerHTML = !missing.length ? `<p class="xm-ok">כל ${ITEMS.length} הסעיפים נענו.</p>`
-      : `<p>נשארו <b>${missing.length}</b> סעיפים שלא נענו במלואם. לחיצה על סעיף מעבירה אליו.</p><div class="xm-miss">${missing.map(i => { const st = status(i), n = i.fields.filter(filled).length; return `<button type="button" data-miss="${i.id}"><span>סעיף ${esc(i.label)}</span><em class="${st === 'empty' ? 'e' : ''}">${st === 'empty' ? 'ריק' : `חלקי · ${n} מתוך ${i.fields.length}`}</em></button>`; }).join('')}</div>`;
-    q('[data-act="confirm"]').textContent = missing.length ? 'הגשה בכל זאת' : 'הגשה';
+    const act = ITEMS.filter(active), missing = act.filter(i => status(i) !== 'done'), warn = choiceWarnings();
+    q('[data-mbody]').innerHTML = (warn.length ? `<div class="xm-warn">${warn.map(x => `<p>${esc(x)}</p>`).join('')}</div>` : '') + (!missing.length ? `<p class="xm-ok">כל ${act.length} הסעיפים נענו.</p>`
+      : `<p>נשארו <b>${missing.length}</b> סעיפים שלא נענו במלואם. לחיצה על סעיף מעבירה אליו.</p><div class="xm-miss">${missing.map(i => { const st = status(i), n = i.fields.filter(filled).length; return `<button type="button" data-miss="${i.id}"><span>סעיף ${esc(i.label)}</span><em class="${st === 'empty' ? 'e' : ''}">${st === 'empty' ? 'ריק' : `חלקי · ${n} מתוך ${i.fields.length}`}</em></button>`; }).join('')}</div>`);
+    q('[data-act="confirm"]').textContent = missing.length || warn.length ? 'הגשה בכל זאת' : 'הגשה';
     q('[data-modal]').hidden = false; q('[data-act="back"]').focus();
   }
   const readable = id => {
     const v = S[id], f = FIELD[id]; if (!filled(id)) return null;
     if (f.type === 'root') return v.filter(Boolean).join('-');
     if (f.type === 'set' && f.kind === 'mark') return v.map(i => f.words[i]).join(' · ');
+    if (f.type === 'set' && f.seg) {
+      const labs = S[id + ':L'] || {}, out = []; let st = 0;
+      [...v, f.words.length - 1].forEach(c => { if (c >= st) { out.push(f.words.slice(st, c + 1).join(' ') + (labs[st] ? ` (${labs[st]})` : '')); st = c + 1; } });
+      return out.join(' / ');
+    }
     if (f.type === 'set') return f.words.map((w, i) => w + (v.includes(i) ? ' /' : '')).join(' ');
+    if (f.type === 'punct') return f.words.map((w, i) => w + (v[i] || '')).join(' ');
     if (f.type === 'sort') { const h = S[f.sort.heads[+v]]; return h ? `${h} (עמודה ${+v + 1})` : `עמודה ${+v + 1}`; }
     if (f.essay) return `${v}\n(${words(v)} מילים)`;
     return String(v);
   };
   function rows() {
-    const r = []; ITEMS.forEach(it => it.fields.forEach((id, k) => r.push({ item: it.label, first: k === 0, span: it.fields.length, label: FIELD[id].label, v: readable(id) })));
+    // the parts and questions the student chose, and anything else the student answered anyway
+    const r = []; ITEMS.filter(it => active(it) || it.fields.some(filled)).forEach(it => it.fields.forEach((id, k) => r.push({ item: it.label, first: k === 0, span: it.fields.length, label: FIELD[id].label, v: readable(id) })));
     if (meta.draft && meta.draft.trim()) r.push({ item: 'טיוטה', first: true, span: 1, label: 'לא נבדקת', v: meta.draft });
     return r;
   }
   function showResult() {
     const rs = rows();
     q('[data-rsheet]').innerHTML = `<table>${rs.map(r => `<tr>${r.first ? `<th rowspan="${r.span}">${esc(r.item)}</th>` : ''}<td class="k">${esc(r.label)}</td><td class="v${r.v === null ? ' blank' : ''}">${r.v === null ? 'לא נענה' : esc(r.v)}</td></tr>`).join('')}</table>`;
-    q('[data-rmeta]').textContent = `${meta.name || 'ללא שם'} · ${ITEMS.filter(i => status(i) === 'done').length} מתוך ${ITEMS.length} סעיפים נענו במלואם`;
+    const act = ITEMS.filter(active);
+    q('[data-rmeta]').textContent = `${meta.name || 'ללא שם'} · ${act.filter(i => status(i) === 'done').length} מתוך ${act.length} סעיפים נענו במלואם`;
     q('[data-res]').hidden = false; q('[data-res]').scrollTop = 0;
   }
   const plain = () => `${data.title || 'מבחן'} · ${meta.name || 'ללא שם'}\n\n` + rows().map(r => `${r.item}${r.label ? ' · ' + r.label : ''}: ${r.v == null ? '—' : r.v}`).join('\n');
@@ -1075,15 +1254,39 @@ async function readDocx(buf) {
     if (levels[lvl].fmt === 'bullet' || levels[lvl].fmt === 'none') return '';
     return levels[lvl].text.replace(/%(\d)/g, (_, k) => fmtNum((levels[k - 1] || levels[lvl]).fmt, c[k - 1] == null ? (levels[k - 1] || {}).start || 1 : c[k - 1])) + ' ';
   }
+  // pictures: each one gets an id, and the text keeps a [תמונה:id] mark where it stood
+  const rels = {}, pics = [];
+  const relFile = zip.file('word/_rels/document.xml.rels');
+  if (relFile) Array.from(P.parseFromString(await relFile.async('string'), 'application/xml').getElementsByTagName('Relationship')).forEach(r => { rels[r.getAttribute('Id')] = r.getAttribute('Target'); });
+  const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const picFor = rid => { let x = pics.find(p => p.rid === rid); if (!x) { x = { id: 'img' + (pics.length + 1), rid }; pics.push(x); } return x.id; };
+  function picIn(n) {
+    const blip = n.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/main', 'blip')[0];
+    const vml = n.getElementsByTagNameNS('urn:schemas-microsoft-com:vml', 'imagedata')[0];
+    const rid = blip ? blip.getAttributeNS(R, 'embed') || blip.getAttribute('r:embed') : vml ? vml.getAttributeNS(R, 'id') || vml.getAttribute('r:id') : '';
+    return rid && rels[rid] ? picFor(rid) : '';
+  }
+  // bold becomes **…**, underline becomes [קו:…]; an underlined run of spaces is an answer line
+  const wrap = (s, b, u) => {
+    const m = s.match(/^(\s*)([\s\S]*?)(\s*)$/); let core = m[2];
+    if (!core) return u && s.length >= 2 ? ' _____ ' : s;
+    if (/^_+$/.test(core)) return s;
+    if (u) core = `[קו:${core.replace(/\]/g, ')')}]`;
+    if (b) core = `**${core}**`;
+    return m[1] + core + m[3];
+  };
   function paraText(p) {
-    let out = '', bold = false, buf = '';
-    const flush = () => { if (!buf) return; out += bold && buf.trim() && !/^_+$/.test(buf.trim()) ? buf.replace(/^(\s*)(.*?)(\s*)$/, '$1**$2**$3') : buf; buf = ''; };
+    let out = '', bold = false, und = false, buf = '';
+    const flush = () => { if (!buf) return; out += wrap(buf, bold, und); buf = ''; };
     Array.from(p.getElementsByTagNameNS(W, 'r')).forEach(r => {
-      const rPr = kid(r, 'rPr'); const b = on(kid(rPr, 'b')) || on(kid(rPr, 'bCs'));
+      const rPr = kid(r, 'rPr'); const b = on(kid(rPr, 'b')) || on(kid(rPr, 'bCs')), u = on(kid(rPr, 'u'));
       let t = '';
-      kids(r).forEach(n => { if (n.localName === 't') t += n.textContent; else if (n.localName === 'tab') t += ' '; else if (n.localName === 'br') t += '\n'; });
+      kids(r).forEach(n => {
+        if (n.localName === 't') t += n.textContent; else if (n.localName === 'tab') t += ' '; else if (n.localName === 'br') t += '\n';
+        else if (n.localName === 'drawing' || n.localName === 'pict') { const id = picIn(n); if (id) { flush(); out += t + ` [תמונה:${id}] `; t = ''; } }
+      });
       if (!t) return;
-      if (b !== bold) { flush(); bold = b; }
+      if (b !== bold || u !== und) { flush(); bold = b; und = u; }
       buf += t;
     });
     flush();
@@ -1100,7 +1303,26 @@ async function readDocx(buf) {
     });
   }
   walk(doc.getElementsByTagNameNS(W, 'body')[0]);
+  // pictures the browser can show, made smaller so the exam stays light; the marks of the rest are removed
+  const images = {};
+  for (const x of pics) {
+    const path = ('word/' + rels[x.rid]).replace(/^word\/\//, '').replace(/word\/\.\.\//, '');
+    const f = zip.file(path);
+    try { const url = f && await shrinkImage(await f.async('blob'), path); if (url) images[x.id] = url; } catch (e) {}
+  }
+  const strip = s => s.replace(/ ?\[תמונה:(img\d+)\] ?/g, (m, id) => images[id] ? m : ' ');
+  lines.forEach(l => { if (l.k === 'p') l.t = strip(l.t); else l.rows = l.rows.map(r => r.map(strip)); });
+  lines.images = images;
   return lines;
+}
+async function shrinkImage(blob, name) {
+  const type = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp' }[(name.split('.').pop() || '').toLowerCase()];
+  if (!type || typeof createImageBitmap === 'undefined') return '';
+  const bmp = await createImageBitmap(new Blob([blob], { type }));
+  const k = Math.min(1, 760 / bmp.width, 900 / bmp.height);
+  const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.72);
 }
 
 function buildExam(lines) {
@@ -1367,6 +1589,8 @@ const Lib = {
   metaOf(ex) { const c = counts(ex); return { title: ex.title || 'מבחן ללא שם', subtitle: ex.subtitle || '', updatedAt: Date.now(), nq: c.q, ns: c.s, minutes: +ex.minutes || 0, texts: !!(ex.settings.texts && ex.articles.length), nikud: !!ex.settings.nikud, source: ex._source || '' }; },
   async save(id, ex) {
     const meta = this.metaOf(ex), json = JSON.stringify(ex);
+    // one cloud document holds up to 1 MB, pictures included
+    if (CL.ok() && new Blob([json]).size > 1000000) throw { code: 'too_big' };
     if (CL.ok()) { const f = window.XM_CANVAS.fs; await f.setDoc(CL.ref('xm_body', id), { json }); await f.setDoc(CL.ref('xm_meta', id), meta); return; }
     if (this.cloud()) { await this.bodyDoc(id).set({ json }); await this.metaCol().doc(id).set(meta); return; }
     localStorage.setItem('xm-lib-' + id, json);
@@ -1448,7 +1672,11 @@ async function flush() {
   if (!curId || !dirty) return; if (saving) { saveT = setTimeout(flush, 400); return; }
   saving = true; dirty = false;
   try { await Lib.save(curId, exam); $('saved').className = 'saved ok'; $('saved').textContent = 'נשמר'; }
-  catch (e) { dirty = true; $('saved').className = 'saved'; $('saved').textContent = e && e.code === 'quota_exceeded' ? 'אין מקום לשמור' : 'לא נשמר, מנסה שוב…'; saveT = setTimeout(flush, 4000); }
+  catch (e) {
+    dirty = true; $('saved').className = 'saved';
+    if (e && e.code === 'too_big') { $('saved').textContent = 'גדול מדי לשמירה: מחקו תמונה'; saving = false; return; }
+    $('saved').textContent = e && e.code === 'quota_exceeded' ? 'אין מקום לשמור' : 'לא נשמר, מנסה שוב…'; saveT = setTimeout(flush, 4000);
+  }
   saving = false;
 }
 async function createExam(ex, source) {
@@ -1519,20 +1747,23 @@ const TYPES = [
   ['mc', 'שאלה אמריקאית', 'תשובות א–ד, התלמיד בוחר אחת'], ['long', 'תשובה פתוחה', 'תיבה לכתיבת תשובה'],
   ['essay', 'חיבור / מטלת כתיבה', 'תיבה גדולה עם מונה מילים'], ['table', 'טבלה', 'למשל שורש, בניין וגזרה'],
   ['mark', 'סימון מילים', 'התלמיד לוחץ על מילים כדי לסמן אותן'], ['split', 'חלוקת משפט', 'התלמיד מסמן / בין מילים'],
+  ['punct', 'פיסוק', 'התלמיד מוסיף סימני פיסוק לטקסט'],
   ['sort', 'מיון לעמודות', 'התלמיד ממיין מילים לקבוצות'], ['match', 'התאמה', 'לכל פריט התלמיד בוחר התאמה']];
 const TNAME = Object.fromEntries(TYPES.map(t => [t[0], t[1]]));
 const newBlock = k => k === 'mc' ? { t: k, opts: ['', '', '', ''] } : k === 'long' ? { t: k, rows: 3 } : k === 'essay' ? { t: k, rows: 14, min: 0, max: 0 } : k === 'table' ? { t: k, rows: [['', ''], ['', '']] } : k === 'sort' ? { t: k, items: [], cols: 2, head: '', meaning: false } : k === 'match' ? { t: k, left: [], right: [] } : { t: k, v: '' };
 
 /* text with answer places <-> editable HTML with chips */
-const TOKRE = new RegExp(String.raw`\*\*(.+?)\*\*|(_{3,})|\{([^{}]+?\s\/\s[^{}]+?)\}|(\[שורש\])|\[(${LIST_KEYS.join('|')})\]|\[רשימה:([^\]]+)\]|\[מעל:([^\]|]+)(?:\|([^\]]+))?\]|(\[(?:מאמר|טקסט|קטע)\s*\d+(?:\s*,\s*פס['׳]?\s*\d+)?\])`, 'g');
+const TOKRE = new RegExp(String.raw`\*\*(.+?)\*\*|(_{3,})|\{([^{}]+?\s\/\s[^{}]+?)\}|(\[שורש\])|\[(${LIST_KEYS.join('|')})\]|\[רשימה:([^\]]+)\]|\[מעל:([^\]|]+)(?:\|([^\]]+))?\]|(\[(?:מאמר|טקסט|קטע)\s*\d+(?:\s*,\s*(?:פס['׳]?|פסקה)\s*(?:\d+|[א-ת]{1,2}))?\])|\[קו:([^\]]+)\]|(\[מסגרת:[^\]]+\]|\[תמונה:[^\]\s]+\])`, 'g');
 function chip(tok) {
   let m;
   if (/^_{3,}$/.test(tok)) return `<span class="tk" contenteditable="false" data-tok="___">▭ משבצת</span>`;
+  if ((m = tok.match(/^\[תמונה:([^\]\s]+)\]$/))) { const src = (exam && exam.images || {})[m[1]]; return `<span class="tk im" contenteditable="false" data-tok="${esc(tok)}">${/^data:image\//.test(src || '') ? `<img src="${src}" alt="">` : 'תמונה חסרה'}</span>`; }
+  if ((m = tok.match(/^\[מסגרת:(.+)\]$/))) return `<span class="tk bx" contenteditable="false" data-tok="${esc(tok)}">${esc(m[1])}</span>`;
   if ((m = tok.match(/^\{(.+)\}$/))) return `<span class="tk ch" contenteditable="false" data-tok="${esc(tok)}">${esc(m[1].split(/\s\/\s/).join(' · '))}</span>`;
   if (tok === '[שורש]') return `<span class="tk rt" contenteditable="false" data-tok="[שורש]">שורש ▢-▢-▢</span>`;
   if ((m = tok.match(/^\[רשימה:(.+)\]$/))) return `<span class="tk ls" contenteditable="false" data-tok="${esc(tok)}">${esc(m[1])}</span>`;
   if ((m = tok.match(/^\[מעל:([^\]|]+)(?:\|([^\]]+))?\]$/))) return `<span class="tk ab" contenteditable="false" data-tok="${esc(tok)}"><small>${esc(m[2] ? m[2] + ' ▾' : 'משבצת')}</small><b>${esc(m[1])}</b></span>`;
-  if ((m = tok.match(/^\[(מאמר|טקסט|קטע)\s*(\d+)(?:\s*,\s*פס['׳]?\s*(\d+))?\]$/))) return `<span class="tk rf" contenteditable="false" data-tok="${esc(tok)}">↖ ${m[1]} ${m[2]}${m[3] ? ` · פס׳ ${m[3]}` : ''}</span>`;
+  if ((m = tok.match(/^\[(מאמר|טקסט|קטע)\s*(\d+)(?:\s*,\s*(?:פס['׳]?|פסקה)\s*(\d+|[א-ת]{1,2}))?\]$/))) return `<span class="tk rf" contenteditable="false" data-tok="${esc(tok)}">↖ ${m[1]} ${m[2]}${m[3] ? ` · פס׳ ${m[3]}` : ''}</span>`;
   if ((m = tok.match(/^\[(.+)\]$/))) return `<span class="tk ls" contenteditable="false" data-tok="${esc(tok)}">${esc(m[1])}</span>`;
   return esc(tok);
 }
@@ -1540,7 +1771,7 @@ function toEditable(text) {
   const s = String(text || ''); let out = '', last = 0, m; const re = new RegExp(TOKRE.source, 'g');
   while ((m = re.exec(s))) {
     out += esc(s.slice(last, m.index)).replace(/\n/g, '<br>'); last = re.lastIndex;
-    out += m[1] !== undefined ? `<b>${toEditable(m[1])}</b>` : chip(m[0]);
+    out += m[1] !== undefined ? `<b>${toEditable(m[1])}</b>` : m[10] !== undefined ? `<u>${toEditable(m[10])}</u>` : chip(m[0]);
   }
   return out + esc(s.slice(last)).replace(/\n/g, '<br>');
 }
@@ -1552,6 +1783,7 @@ function fromEditable(el) {
       if (n.dataset && n.dataset.tok) out += n.dataset.tok;
       else if (n.tagName === 'BR') out += '\n';
       else if (/^(B|STRONG)$/.test(n.tagName)) { const inner = fromEditable(n); out += inner.trim() ? `**${inner}**` : inner; }
+      else if (n.tagName === 'U') { const inner = fromEditable(n); out += inner.trim() ? `[קו:${inner.replace(/\]/g, ')')}]` : inner; }
       else if (/^(DIV|P)$/.test(n.tagName)) out += (out && !out.endsWith('\n') ? '\n' : '') + fromEditable(n);
       else out += fromEditable(n);
     }
@@ -1565,7 +1797,7 @@ function blockQE(b, p) {
   const t = b.t || 'text'; let body = '';
   if (t === 'text') body = rich(p + '.v', b.v, 'כתבו כאן טקסט או שאלה…');
   else if (t === 'passage') body = rich(p + '.v', b.v, 'הדביקו כאן את הקטע…', 'passage');
-  else if (t === 'mc') body = lineList(p + '.opts', b.opts, 'תשובה…', true);
+  else if (t === 'mc') body = lineList(p + '.opts', b.opts, 'תשובה…', true) + `<label class="row cap"><input type="checkbox" data-chk="${p}.num"${b.num ? ' checked' : ''}> מספור (1), (2), (3) במקום א, ב, ג</label>`;
   else if (t === 'long') body = `<div class="ansbox"><span>כאן התלמיד כותב את התשובה</span><span class="row"><span class="cap">גודל</span><span class="seg">${[[2, 'קטנה'], [4, 'בינונית'], [8, 'גדולה']].map(([r, n]) => `<button type="button" data-qe="set" data-p="${p}.rows" data-v="${r}" aria-pressed="${(b.rows || 3) === r || (r === 4 && ![2, 8].includes(b.rows || 3))}">${n}</button>`).join('')}</span></span></div>`;
   else if (t === 'essay') body = `<div class="ansbox" style="min-height:6em"><span>תיבה גדולה לכתיבה, עם מונה מילים</span><span class="row"><span class="cap">מילים: מ-</span><input class="numin" type="number" min="0" data-num="${p}.min" value="${b.min || ''}" aria-label="מינימום מילים"><span class="cap">עד</span><input class="numin" type="number" min="0" data-num="${p}.max" value="${b.max || ''}" aria-label="מקסימום מילים"></span></div>`;
   else if (t === 'table') {
@@ -1573,7 +1805,10 @@ function blockQE(b, p) {
     body = `<div class="ted"><table>${rows.map((r, ri) => `<tr class="${ri === 0 && b.head !== false ? 'head' : ''}">${r.map((c, ci) => `<td>${rich(`${p}.rows.${ri}.${ci}`, c, '')}</td>`).join('')}</tr>`).join('')}</table></div>
       <div class="ted-bar"><button type="button" class="addline" data-qe="tbl" data-p="${p}" data-v="row+">+ שורה</button><button type="button" class="addline" data-qe="tbl" data-p="${p}" data-v="col+">+ עמודה</button><button type="button" class="ico" data-qe="tbl" data-p="${p}" data-v="row-">− שורה</button><button type="button" class="ico" data-qe="tbl" data-p="${p}" data-v="col-">− עמודה</button><span class="cap">תא ריק = משבצת לתשובה. אפשר להכניס לתא שורש או רשימה מהסרגל למעלה.</span></div>`;
   }
-  else if (t === 'mark' || t === 'split') body = `${rich(p + '.v', b.v, t === 'mark' ? 'הטקסט שבו התלמיד יסמן מילים…' : 'המשפט שהתלמיד יחלק…', 'passage')}<span class="cap">${t === 'mark' ? 'בזמן המבחן התלמיד לוחץ על מילים כדי לסמן אותן.' : 'בזמן המבחן התלמיד לוחץ בין מילים כדי לסמן גבול ( / ).'}</span>`;
+  else if (t === 'mark') body = `${rich(p + '.v', b.v, 'הטקסט שבו התלמיד יסמן מילים…', 'passage')}<span class="cap">בזמן המבחן התלמיד לוחץ על מילים כדי לסמן אותן.</span>`;
+  else if (t === 'split') body = `${rich(p + '.v', b.v, 'המשפט שהתלמיד יחלק…', 'passage')}
+    <div class="row"><span class="cap">בזמן המבחן התלמיד לוחץ בין מילים כדי לסמן גבול ( / ). ואחר כך ליד כל חלק:</span><select class="numin" style="width:auto" data-sel="${p}.label">${[['', 'לא כותב כלום'], ['פסוקית', 'בוחר סוג פסוקית'], ['תפקיד', 'בוחר תפקיד תחבירי'], ['free', 'כותב בעצמו']].map(([v, n]) => `<option value="${v}"${(b.label || '') === v ? ' selected' : ''}>${n}</option>`).join('')}</select></div>`;
+  else if (t === 'punct') body = `${rich(p + '.v', b.v, 'הטקסט בלי סימני הפיסוק…', 'passage')}<span class="cap">בזמן המבחן התלמיד לוחץ אחרי מילה ובוחר סימן פיסוק.</span>`;
   else if (t === 'sort') body = `${chipsEd(p + '.items', b.items, 'הקלידו מילה ולחצו Enter')}
     <div class="row"><span class="cap">עמודות</span><span class="seg">${[2, 3, 4].map(n => `<button type="button" data-qe="set" data-p="${p}.cols" data-v="${n}" aria-pressed="${(+b.cols || 2) === n}">${n}</button>`).join('')}</span>
     <span class="cap">כותרת כל עמודה</span><select class="numin" style="width:auto" data-sel="${p}.head"><option value="">התלמיד כותב</option>${LIST_KEYS.map(n => `<option${b.head === n ? ' selected' : ''}>בחירה: ${n}</option>`).join('')}</select>
@@ -1591,11 +1826,14 @@ function qeHtml() {
         <button type="button" class="btn primary small" data-qe="done">✓ סיום עריכה</button></div>
       <div class="fmt off" id="fmt" aria-label="הוספה לטקסט"><span class="lbl">בתוך הטקסט:</span>
         <button type="button" class="fb" data-ins="bold"><b>B</b> מודגש</button>
+        <button type="button" class="fb" data-ins="u"><u>קו</u> מתחת</button>
         <button type="button" class="fb" data-ins="blank">משבצת <span class="pv">▭</span></button>
         <button type="button" class="fb" data-ins="choice">בחירה <span class="pv">א · ב</span></button>
         <button type="button" class="fb" data-ins="root">שורש <span class="pv">▢-▢-▢</span></button>
         <button type="button" class="fb" data-ins="list">רשימה <span class="pv">▾</span></button>
         <button type="button" class="fb" data-ins="above">מעל מילה</button>
+        <button type="button" class="fb" data-ins="box">מסגרת <span class="pv">▢</span></button>
+        <button type="button" class="fb" data-ins="img">תמונה</button>
         ${exam.settings.texts && exam.articles.length ? `<button type="button" class="fb" data-ins="ref">הפניה ל${esc(exam.settings.textItem)}</button>` : ''}</div>
       <form class="qe-ask" data-qeask><span>✦ ${AI}:</span><input id="qeAskIn" placeholder="${sample ? 'מה לשנות בשאלה? למשל: תהפוך לאמריקאית עם 4 תשובות' : 'שינוי במילים זמין כשהכלי פתוח מתוך Claude'}"${sample ? '' : ' disabled'}><button type="submit" class="btn small"${sample ? '' : ' disabled'}>שינוי</button></form>
     </div>
@@ -1701,7 +1939,7 @@ function insertTok(tok, range) {
 function insertFromBar(kind, btn) {
   if (!lastRich || !lastRich.isConnected) { flashFmt(); return; }
   const r = caretRange(); const selText = r ? r.toString().trim() : '';
-  if (kind === 'bold') { lastRich.focus(); if (r) { const s = getSelection(); s.removeAllRanges(); s.addRange(r); } document.execCommand('bold'); lastRich.dispatchEvent(new Event('input', { bubbles: true })); return; }
+  if (kind === 'bold' || kind === 'u') { lastRich.focus(); if (r) { const s = getSelection(); s.removeAllRanges(); s.addRange(r); } document.execCommand(kind === 'u' ? 'underline' : 'bold'); lastRich.dispatchEvent(new Event('input', { bubbles: true })); return; }
   if (kind === 'blank') return insertTok('___', r);
   if (kind === 'root') return insertTok('[שורש]', r);
   const keep = r ? r.cloneRange() : null;
@@ -1711,6 +1949,19 @@ function insertFromBar(kind, btn) {
     pick => { if (pick) return insertTok(`[${pick}]`, keep); const o = $('popIn').value.split(/\s*[,/]\s*/).filter(Boolean); if (o.length < 2) return false; insertTok(`[רשימה:${o.join(' / ')}]`, keep); });
   if (kind === 'above') openPop(btn, `<h3>משבצת מעל מילה</h3><label class="f">המילה או הצירוף<input id="popIn" value="${esc(selText)}" placeholder="למשל: הילדים"></label><label class="f">מה התלמיד ממלא<select id="popSel"><option value="">כותב בעצמו</option>${LIST_KEYS.map(n => `<option>${n}</option>`).join('')}</select></label><div class="row"><button type="button" class="btn primary small" id="popOk">הוספה</button></div>`,
     () => { const w = $('popIn').value.trim(); if (!w) return false; insertTok(`[מעל:${w}${$('popSel').value ? '|' + $('popSel').value : ''}]`, keep); });
+  if (kind === 'box') openPop(btn, `<h3>מילים במסגרת</h3><label class="f">המילים שבתוך המסגרת<input id="popIn" value="${esc(selText)}" placeholder="למשל: אם ימנעו הכותבים"></label><div class="row"><button type="button" class="btn primary small" id="popOk">הוספה</button></div>`,
+    () => { const w = $('popIn').value.trim().replace(/\]/g, ')'); if (!w) return false; insertTok(`[מסגרת:${w}]`, keep); });
+  if (kind === 'img') {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/gif,image/webp';
+    inp.onchange = async () => {
+      const f = inp.files[0]; if (!f) return;
+      let url = ''; try { url = await shrinkImage(f, f.name || 'x.png'); } catch (e) {}
+      if (!url) { showModal(`<h2>לא הצלחתי לקרוא את התמונה</h2><p>אפשר להוסיף תמונה מסוג PNG או JPG.</p><div class="row"><button type="button" class="btn primary" data-close>סגירה</button></div>`); return; }
+      exam.images = exam.images || {}; let n = 1; while (exam.images['img' + n]) n++;
+      exam.images['img' + n] = url; insertTok(`[תמונה:img${n}]`, keep);
+    };
+    inp.click(); return;
+  }
   if (kind === 'ref') openPop(btn, `<h3>הפניה ל${esc(exam.settings.textItem)}</h3><div class="grid2"><label class="f">${esc(exam.settings.textItem)}<select id="popA">${exam.articles.map((a, i) => `<option value="${i + 1}">${i + 1}. ${esc(a.title || '')}</option>`).join('')}</select></label><label class="f">פסקה (לא חובה)<input id="popP" type="number" min="1"></label></div><div class="row"><button type="button" class="btn primary small" id="popOk">הוספה</button></div>`,
     () => insertTok(`[${exam.settings.textItem} ${$('popA').value}${$('popP').value ? `, פס' ${$('popP').value}` : ''}]`, keep));
 }
@@ -1723,7 +1974,8 @@ function editChip(tk) {
   if ((m = tok.match(/^\{(.+)\}$/))) { html = `<h3>בחירה בתוך המשפט</h3><label class="f">האפשרויות (מפרידים בפסיק)<input id="popIn" value="${esc(m[1].split(/\s\/\s/).join(', '))}"></label>`; ok = () => { const o = $('popIn').value.split(/\s*[,/]\s*/).filter(Boolean); if (o.length < 2) return false; replace(`{${o.join(' / ')}}`); }; }
   else if ((m = tok.match(/^\[מעל:([^\]|]+)(?:\|([^\]]+))?\]$/))) { html = `<h3>משבצת מעל מילה</h3><label class="f">המילה<input id="popIn" value="${esc(m[1])}"></label><label class="f">מה התלמיד ממלא<select id="popSel"><option value="">כותב בעצמו</option>${LIST_KEYS.map(n => `<option${m[2] === n ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`; ok = () => { const w = $('popIn').value.trim(); if (!w) return false; replace(`[מעל:${w}${$('popSel').value ? '|' + $('popSel').value : ''}]`); }; }
   else if ((m = tok.match(/^\[(רשימה:)?(.+)\]$/)) && tok !== '[שורש]' && !/^\[(מאמר|טקסט|קטע)/.test(tok)) { const cur = m[1] ? '' : m[2]; html = `<h3>רשימה לבחירה</h3><div class="lists">${LIST_KEYS.map(n => `<button type="button" data-pick="${n}"${n === cur ? ' style="border-color:var(--ink);color:var(--ink)"' : ''}>${n}</button>`).join('')}</div><label class="f">או רשימה משלכם<input id="popIn" value="${m[1] ? esc(m[2].split(/\s\/\s/).join(', ')) : ''}"></label>`; ok = pick => { if (pick) return replace(`[${pick}]`); const o = $('popIn').value.split(/\s*[,/]\s*/).filter(Boolean); if (o.length < 2) return false; replace(`[רשימה:${o.join(' / ')}]`); }; }
-  else { html = `<h3>${tok === '___' ? 'משבצת לתשובה' : tok === '[שורש]' ? 'משבצות שורש' : 'הפניה'}</h3><p class="cap" style="margin:0">אפשר למחוק או להשאיר.</p>`; ok = null; }
+  else if ((m = tok.match(/^\[מסגרת:(.+)\]$/))) { html = `<h3>מילים במסגרת</h3><label class="f">המילים<input id="popIn" value="${esc(m[1])}"></label>`; ok = () => { const w = $('popIn').value.trim().replace(/\]/g, ')'); if (!w) return false; replace(`[מסגרת:${w}]`); }; }
+  else { html = `<h3>${tok === '___' ? 'משבצת לתשובה' : tok === '[שורש]' ? 'משבצות שורש' : /^\[תמונה:/.test(tok) ? 'תמונה' : 'הפניה'}</h3><p class="cap" style="margin:0">אפשר למחוק או להשאיר.</p>`; ok = null; }
   openPop(tk, html + `<div class="row">${ok ? '<button type="button" class="btn primary small" id="popOk">שמירה</button>' : '<span></span>'}<button type="button" class="btn small danger" id="popDel">מחיקה</button></div>`, ok, remove);
 }
 let popOk = null;
@@ -1766,13 +2018,16 @@ function renderDrawer() {
     body = (s.texts ? '' : `<div class="notes">אזור הטקסטים כבוי, ולכן התלמיד לא יראה אותם. <button type="button" class="btn small" data-dact="texts-on">להפעיל</button></div>`) +
       exam.articles.map((a, i) => `<div class="art-card"><div class="h"><b>${esc(s.textItem)} ${i + 1}</b><button type="button" class="ico" data-dact="up" data-i="${i}">↑</button><button type="button" class="ico" data-dact="down" data-i="${i}">↓</button><button type="button" class="ico del" data-dact="del" data-i="${i}">מחיקה</button></div>
         <label class="f">כותרת<input data-dv="articles.${i}.title" value="${esc(a.title)}"></label><label class="f">מקור / כותב<input data-dv="articles.${i}.by" value="${esc(a.by)}"></label>
-        <label class="f">הטקסט (כל פסקה בשורה; ימוספרו אוטומטית)<textarea data-dv="articles.${i}.ps" rows="${Math.min(12, Math.max(3, (a.ps || []).length + 1))}">${esc((a.ps || []).join('\n'))}</textarea></label></div>`).join('') +
+        <label class="f">הטקסט (כל פסקה בשורה; ימוספרו אוטומטית)<textarea data-dv="articles.${i}.ps" rows="${Math.min(12, Math.max(3, (a.ps || []).length + 1))}">${esc((a.ps || []).join('\n'))}</textarea></label>
+        ${sw(`articles.${i}.pl`, a.pl === 'letters', 'פסקאות באותיות', 'פסקה א, פסקה ב… במקום פס׳ 1, פס׳ 2')}</div>`).join('') +
       `<button type="button" class="btn" data-dact="add-art">+ ${esc(s.textItem)} חדש</button>`;
   } else if (drawer.kind === 'part') {
     const part = exam.parts[drawer.pi]; if (!part) return closeDrawer();
     title = 'חלק / פרק';
     body = `<label class="f">שם החלק<input data-dv="parts.${drawer.pi}.title" value="${esc(part.title)}"></label><label class="f">ניקוד<input data-dv="parts.${drawer.pi}.pts" value="${esc(part.pts)}"></label>
       <label class="f">הנחיה לחלק (לא חובה)<textarea data-dv="parts.${drawer.pi}.note" rows="2">${esc(part.note)}</textarea></label>
+      ${part.qs.length > 1 ? `<label class="f" style="max-width:18em">על כמה שאלות עונים בחלק הזה<select data-dv="parts.${drawer.pi}.pick"><option value="0">על כולן</option>${part.qs.slice(1).map((x, k) => `<option value="${k + 1}"${+part.pick === k + 1 ? ' selected' : ''}>${k + 1} מתוך ${part.qs.length}</option>`).join('')}</select></label>` : ''}
+      ${sw(`parts.${drawer.pi}.alt`, !!part.alt, 'פרק לבחירה', 'התלמיד בוחר פרק אחד מבין כל הפרקים שמסומנים כך, ועונה רק עליו')}
       <div class="row"><button type="button" class="btn" data-dact="add-q">+ שאלה בחלק הזה</button><button type="button" class="btn" data-dact="add-part">+ חלק חדש אחרי</button></div>
       <div class="row"><button type="button" class="ico" data-dact="pmove" data-v="-1">↑ למעלה</button><button type="button" class="ico" data-dact="pmove" data-v="1">↓ למטה</button><button type="button" class="ico del" data-dact="pdel">מחיקת החלק וכל השאלות בו</button></div>`;
   }
@@ -1783,12 +2038,13 @@ $('drawer').addEventListener('input', e => {
   const t = e.target, k = t.dataset.dv; if (!k) return;
   let v = t.value;
   if (/(^instructions$|\.ps$)/.test(k)) v = v.split('\n').map(x => x.trim()).filter(Boolean);
-  if (k === 'minutes' || k === 'settings.ext') v = +v || 0;
+  if (k === 'minutes' || k === 'settings.ext' || /\.pick$/.test(k)) v = +v || 0;
   setP2(k, v);
   if (k === 'settings.textsName') { exam.settings.textItem = NAMES[v] || 'מאמר'; changed(true); return; }
+  if (/\.pick$/.test(k)) { changed(true); return; }
   changed(false);
 });
-$('drawer').addEventListener('change', e => { const t = e.target; if (t.dataset.dk) { snapshot(); setP2(t.dataset.dk, t.checked); changed(true); } });
+$('drawer').addEventListener('change', e => { const t = e.target; if (t.dataset.dk) { snapshot(); setP2(t.dataset.dk, /\.pl$/.test(t.dataset.dk) ? (t.checked ? 'letters' : '') : t.checked); changed(true); } });
 function setP2(p, v) { const a = p.split('.'), k = a.pop(); const o = a.length ? a.reduce((x, y) => x[y], exam) : exam; o[k] = v; }
 $('drawer').addEventListener('click', e => {
   const b = e.target.closest('[data-dact]'); if (!b) return;
@@ -1817,10 +2073,21 @@ async function handleFile(f) {
       if (!m) throw new Error('בקובץ הזה אין מבחן שנוצר בכלי הזה.');
       await createExam(normalize(JSON.parse(m[1].replace(/<\\\//g, '</'))), name); return;
     }
-    if (!/\.docx$/i.test(name)) throw new Error('אפשר להעלות קובץ Word מסוג ‎.docx. קובץ ‎.doc ישן: פותחים אותו ב-Word ושומרים בשם כ-‎.docx.');
+    if (/\.pdf$/i.test(name)) {
+      const s = await samplePromise;
+      if (!s || !s.pdf) throw new Error('כאן אפשר להמיר רק קובצי Word. קובץ PDF: פותחים אותו ב-Word, שומרים בשם כ-‎.docx ומעלים.');
+      if (f.size > 18 * 1024 * 1024) throw new Error('קובץ ה-PDF גדול מדי (יותר מ-18MB). אפשר לשמור ממנו רק את עמודי המבחן ולהעלות שוב.');
+      const data = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.onerror = no; fr.readAsDataURL(f); });
+      lines = null;
+      const ex = normalize({ title: name.replace(/\.pdf$/i, ''), parts: [] }); ex.images = {};
+      await createExam(ex, name); notes = []; renderStatus();
+      await convertPdf(data);
+      return;
+    }
+    if (!/\.docx$/i.test(name)) throw new Error('אפשר להעלות קובץ Word מסוג ‎.docx או PDF. קובץ ‎.doc ישן: פותחים אותו ב-Word ושומרים בשם כ-‎.docx.');
     lines = await readDocx(await f.arrayBuffer());
     const r = buildExam(lines);
-    const ex = normalize(r.exam); if (!ex.title || ex.title.length > 80) ex.title = name.replace(/\.docx$/i, '');
+    const ex = normalize(r.exam); ex.images = lines.images || {}; if (!ex.title || ex.title.length > 80) ex.title = name.replace(/\.docx$/i, '');
     await createExam(ex, name); notes = r.notes; renderStatus();
     // Word files always go through Claude; the built-in recognition is only the fallback
     const s = await samplePromise;
@@ -1835,6 +2102,12 @@ document.addEventListener('dragenter', e => { if (hasFiles(e)) { dragDepth++; $(
 document.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) { $('dropHint').hidden = true; $('upcard').classList.remove('over'); } });
 document.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
 document.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; $('dropHint').hidden = true; $('upcard').classList.remove('over'); handleFile(e.dataTransfer.files[0]); });
+// a file copied in the computer's folders can also be pasted (Ctrl+V) on the home screen
+document.addEventListener('paste', e => {
+  const fs = e.clipboardData && e.clipboardData.files; if (!fs || !fs.length || $('home').hidden) return;
+  const f = [...fs].find(x => /\.(docx|pdf|html?)$/i.test(x.name || '')); if (!f) return;
+  e.preventDefault(); handleFile(f);
+});
 
 /* ===================== modal ===================== */
 function showModal(html) { $('modalIn').innerHTML = html; $('modal').hidden = false; const b = $('modalIn').querySelector('button'); if (b) b.focus(); }
@@ -1880,22 +2153,27 @@ function exportDone(fname) {
 }
 
 /* ===================== Claude ===================== */
-const SCHEMA_HELP = `Exam JSON: {"title":str,"subtitle":str,"minutes":int,"instructions":[str],"articles":[{"title":str,"by":str,"ps":[str]}],"parts":[{"title":str,"pts":str,"note":str,"qs":[{"n":str,"intro":[Block],"subs":[{"l":str,"pts":number|null,"blocks":[Block]}]}]}]}
+const SCHEMA_HELP = `Exam JSON: {"title":str,"subtitle":str,"minutes":int,"instructions":[str],"articles":[{"title":str,"by":str,"pl":""|"letters","ps":[str]}],"parts":[{"title":str,"pts":str,"note":str,"alt":str,"pick":int,"qs":[{"n":str,"intro":[Block],"subs":[{"l":str,"pts":number|null,"blocks":[Block]}]}]}]}
 Block types:
  {"t":"text","v":str} question text or a line with inline answer places · {"t":"passage","v":str} reading passage / sentence block
- {"t":"mc","opts":[str]} multiple choice (options א-ד) · {"t":"long","rows":int} written answer
+ {"t":"mc","opts":[str],"num":bool} multiple choice; num=true when the options are numbered (1), (2)… instead of א-ד · {"t":"long","rows":int} written answer
+ {"t":"punct","v":str} the student adds punctuation to this text ("פסקו את הקטע"); v is the text exactly as given, without punctuation
  {"t":"essay","rows":int,"min":int,"max":int} writing task (חיבור, מאמר טיעון, סיכום, מכתב, מטלת כתיבה) with word limits from the instructions
  {"t":"table","rows":[[str]]} first row = headers; empty cell "" = answer box
  {"t":"mark","v":str} student clicks words in this text to mark/underline/circle them ("סמנו/מתחו קו/הקיפו בקטע/במשפט את...")
- {"t":"split","v":str} student marks boundaries with / between words ("חלקו את המשפט לפסוקיות/לאיברים", "סמנו את גבולות הפסוקית")
+ {"t":"split","v":str,"label":""|"פסוקית"|"תפקיד"|"free"} student marks boundaries with / between words ("חלקו את המשפט לפסוקיות/לאיברים", "תחמו את הפסוקית", "סמנו את גבולות הפסוקית"); label = what the student then names for every part: "פסוקית" when asked for the clause type, "תפקיד" when asked for the syntactic role of each clause/phrase (also "נתחו את המשפט: ציינו מעל המילים את התפקידים"), "free" for anything else; omit when only the boundaries are asked
  {"t":"sort","items":[str],"cols":int,"head":"" or list name,"meaning":bool} sort words into columns ("מיינו", "חלקו לזוגות/לקבוצות"); head = list name when column titles come from a list (e.g. "בניין"), "" when the student writes them; meaning=true when asked for the common meaning
  {"t":"match","left":[str],"right":[str]} matching ("התאימו", "מתחו קו בין")
 Tokens inside "v", table cells, options and items:
  ___ typed blank · {opt1 / opt2 / opt3} pick one (every inline "א / ב", נכון / לא נכון, words to circle from a short list)
  [שורש] root letter boxes · ready-made dropdowns: ${LIST_KEYS.map(n => `[${n}]`).join(' ')} · [רשימה:a / b / c] custom dropdown
  [מעל:word] box above a word, [מעל:word|תפקיד] dropdown above a word (any list name) — for "כתבו מעל כל מילה/צירוף..."
- [מאמר N, פס' M] link to article N paragraph M (after every reference to an article) · **bold**
-Rules: keep the exam's wording, nikud and numbering exactly. "l" is the sub label like "א" or "ב(2)"; the first block of a sub is its question text. Points like "(3 נק')" go to "pts", not the text. Every sub must have somewhere to answer. Prefer the most specific type: tables with root/binyan/גזרה/משקל columns use [שורש], [בניין], [גזרה] in empty cells; syntax roles use [מעל:..|תפקיד]; clause types use [פסוקית]; sentence types use [סוג משפט]; logical relations use [קשר לוגי]. Drop page-break notes, draft pages, cover name/class lines and any answers a student already wrote.`;
+ [מאמר N, פס' M] link to article N paragraph M (after every reference to an article; M may be a letter, [מאמר N, פסקה ג]) · **bold**
+ [קו:words] underlined words (keep every underline of the exam, e.g. "הצירוף המסומן בקו") · [מסגרת:words] words in a box (e.g. a clause already bounded)
+ [תמונה:imgN] a picture: keep each mark exactly once, where it stands (in a question's text, a table cell, or as its own article paragraph); never invent marks
+Choices: when a part says to answer only some of its questions ("ענו על ארבע מן השאלות 6–10", "ענו על שתיים מן השאלות"), set its "pick" to that number. When the student chooses one of several chapters/parts ("בחרו בפרק ב – תחביר או בפרק ג – מערכת הצורות", "ענו על אחד מן הפרקים ב–ג"), make each chapter its own part and give those parts the same "alt" (e.g. "בחירה"); drop the line asking to write the chosen chapter's name.
+Articles: paragraphs labelled with letters ("פסקה א", "פסקה ב") → "pl":"letters"; drop the paragraph labels and line numbers from the text. A reference sheet (דף עזר / נספח) is one more article. Titles, part titles and "by" are plain text without marks.
+Rules: keep the exam's wording, nikud and numbering exactly. "l" is the sub label like "א" or "ב(2)"; the first block of a sub is its question text. Points like "(3 נק')" go to "pts", not the text. Every sub must have somewhere to answer. Labelled lines ("מאפיין: ___ דוגמה: ___", "השורש: ___ הבניין: ___") keep every blank; rewriting tasks ("נסחו מחדש", "המירו", "פרקו לשלושה משפטים") get a long answer with one row per line asked. Prefer the most specific type: tables with root/binyan/גזרה/משקל columns use [שורש], [בניין], [גזרה] in empty cells; syntax roles use [מעל:..|תפקיד]; clause types use [פסוקית]; sentence types use [סוג משפט]; logical relations use [קשר לוגי]. Drop page-break notes, draft pages, cover name/class lines and any answers a student already wrote.`;
 const CLAUDE_ERRORS = {
   rate_limited: WEB ? 'הגעתם למגבלה של המפתח החינמי. מחכים דקה ומנסים שוב. אם נגמרה המכסה היומית, היא מתחדשת מחר.' : CANVAS ? 'נגמרה המכסה של Gemini Pro בחשבון הזה. היא מתחדשת לבד אחרי כמה שעות, לפעמים רק למחרת, ואז אפשר לנסות שוב. המבחן שמור ולא נפגע.' : 'יש כרגע עומס או שהגעתם למגבלת השימוש. נסו שוב בעוד כמה דקות.',
   not_granted: CANVAS ? 'Gemini לא אישר בקשות מהחשבון הזה. בדקו שאתם מחוברים לחשבון Google. בחשבון של בית ספר ייתכן שמנהל המערכת חסם את Gemini באפליקציות, ואז אפשר להיכנס עם חשבון Google פרטי.' : 'לא אושרה גישה ל-Claude.',
@@ -1905,13 +2183,13 @@ const CLAUDE_ERRORS = {
   refusal: `${WEB ? 'Gemini' : 'Claude'} סירב לבצע את הבקשה הזו. נסו לנסח אחרת.`,
   too_large: 'המבחן ארוך מדי לבקשה אחת.'
 };
-async function runClaude(prompt, label) {
+async function runClaude(prompt, label, files) {
   if (WEB && !getKey() && !(await askKey())) return null;
   const ctl = new AbortController();
   showModal(`<h2><span class="spin"></span> ${label}</h2><p>זה לוקח בדרך כלל דקה עד שלוש. אפשר לחכות כאן.</p><p class="cap" id="aiProg"></p><div class="row"><button type="button" class="btn" id="aiStop">עצירה</button></div>`);
   $('aiStop').onclick = () => ctl.abort();
   const onProgress = n => { const p = $('aiProg'); if (p) p.textContent = `${AI} כותב… ${n.toLocaleString('he-IL')} תווים עד עכשיו`; };
-  const o = { modelTier: 'complex', signal: ctl.signal };
+  const o = { modelTier: 'complex', signal: ctl.signal }; if (files) o.files = files;
   if (WEB) o.onProgress = onProgress; else o.onText = ({ text }) => onProgress((text || '').length);
   try { const out = await sample.json(prompt, o); $('modal').hidden = true; return out; }
   catch (e) {
@@ -1987,7 +2265,10 @@ function parseJsonText(text) {
   if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e) {} }
   throw { code: 'invalid_json' };
 }
+// Gemini reads attached files (a PDF exam) together with the instructions
+const filesAndText = (prompt, opts) => [...((opts && opts.files) || []).map(f => ({ inline_data: { mime_type: f.mime, data: f.data } })), { text: prompt }];
 const geminiSample = {
+  pdf: true,
   async json(prompt, opts) {
     opts = opts || {};
     const key = getKey(); if (!key) throw { code: 'bad_key' };
@@ -1998,7 +2279,7 @@ const geminiSample = {
       res = await fetch(`${GEM}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
         method: 'POST', signal: opts.signal,
         headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: Math.min(65536, out) } })
+        body: JSON.stringify({ contents: [{ role: 'user', parts: filesAndText(prompt, opts) }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: Math.min(65536, out) } })
       });
     } catch (e) { throw { code: e && e.name === 'AbortError' ? 'cancelled' : 'network' }; }
     if (!res.ok) {
@@ -2039,9 +2320,10 @@ const geminiSample = {
 const CANVAS_MODELS = ['gemini-3-pro-preview', 'gemini-2.5-pro'];
 const canvasCall = (model, body, signal) => fetch(`${GEM}/models/${model}:generateContent?key=`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
 const canvasSample = {
+  pdf: true,
   async json(prompt, opts) {
     opts = opts || {};
-    const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 65536 } };
+    const body = { contents: [{ role: 'user', parts: filesAndText(prompt, opts) }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 65536 } };
     const models = CANVAS_MODELS;
     let res, wait = 2000;
     for (let m = 0, attempt = 0; ; attempt++) {
@@ -2101,21 +2383,38 @@ async function restoreFile(f) {
 }
 $('backupBtn').onclick = backupAll;
 $('restoreIn').addEventListener('change', e => { if (e.target.files[0]) restoreFile(e.target.files[0]); e.target.value = ''; });
-const lean = () => Object.assign({}, exam, { _source: undefined, articles: exam.articles.map(a => ({ title: a.title })) });
+// what the AI sees of the exam: articles by title only, pictures by their marks only
+const lean = () => Object.assign({}, exam, { _source: undefined, images: undefined, articles: exam.articles.map(a => ({ title: a.title })) });
 const keepArts = (out, arts) => { if (!out.articles || !out.articles.length || out.articles.every(a => !a.ps || !a.ps.length)) out.articles = arts; return out; };
 async function convertWithClaude() {
   if (!sample || !lines) return;
   const docText = lines.map(l => l.k === 'tbl' ? '[טבלה]\n' + l.rows.map(r => r.join(' | ')).join('\n') + '\n[סוף טבלה]' : l.t).filter(x => x && x.trim()).join('\n');
   const knownArts = exam.articles.slice(), id = curId;
   const artRule = knownArts.length ? `\nThe ${knownArts.length} articles are already extracted: return "articles": [] and do not copy their text, but still add [מאמר N, פס' M] links in the questions.` : '';
-  const out = await runClaude(`You convert a Hebrew school exam (Hebrew language / לשון, grades 11–12; extracted from Word, bold marked with **) into JSON for a typing-friendly exam app. Return ONLY the JSON.\n${SCHEMA_HELP}${artRule}\n\nEXAM:\n${docText}`, `${AI} ממיר את המבחן…`);
+  const out = await runClaude(`You convert a Hebrew school exam (Hebrew language / לשון, grades 11–12; extracted from Word: bold marked with **, underline with [קו:…], pictures with [תמונה:imgN], each table between [טבלה] and [סוף טבלה] with | between cells) into JSON for a typing-friendly exam app. Return ONLY the JSON.\n${SCHEMA_HELP}${artRule}\n\nEXAM:\n${docText}`, `${AI} ממיר את המבחן…`);
   if (id !== curId) return;
   if (!out || !Array.isArray(out.parts) || !out.parts.length) { if (out !== null) { notes.unshift(`ההמרה עם ${AI} לא הושלמה, ומוצגת המרה בסיסית.`); renderStatus(); } return; }
   snapshot();
-  const keepSettings = exam.settings, title = exam.title, src = exam._source;
-  exam = normalize(keepArts(out, knownArts)); exam._source = src; if (!exam.title) exam.title = title;
+  const keepSettings = exam.settings, title = exam.title, src = exam._source, pics = exam.images;
+  exam = normalize(keepArts(out, knownArts)); exam._source = src; exam.images = pics; if (!exam.title) exam.title = title;
   exam.settings = Object.assign(keepSettings, { texts: exam.articles.length > 0 || keepSettings.texts });
   notes = [`הומר עם ${AI}. כדאי לעבור על השאלות.`]; editing = null;
+  changed(true);
+}
+// a PDF goes to Gemini as it is: Gemini reads the pages, tables and pictures itself
+async function convertPdf(data) {
+  const id = curId;
+  const out = await runClaude(`The attached PDF is a Hebrew school exam (Hebrew language / לשון, grades 11–12). Convert it into JSON for a typing-friendly exam app. Return ONLY the JSON.
+The PDF may also hold a cover page, general instructions, answer lines, draft pages ("טיוטה") and an appendix (נספח) with articles and a reference sheet: the appendix texts go into "articles"; skip covers, answer lines and drafts. Mark bold words with ** and underlined words with [קו:…] as they appear.
+Pictures cannot be copied: where a picture matters for a question (a comic, an ad, a chart), describe it briefly in Hebrew in parentheses, starting "בתמונה:", and include every word written in it.
+${SCHEMA_HELP}`, `${AI} קורא את ה-PDF וממיר את המבחן…`, [{ mime: 'application/pdf', data }]);
+  if (id !== curId) return;
+  if (!out || !Array.isArray(out.parts) || !out.parts.length) { if (out !== null) { notes.unshift(`${AI} לא הצליח להמיר את ה-PDF. אפשר לנסות שוב, או לשמור אותו ב-Word כ-‎.docx ולהעלות.`); renderStatus(); } return; }
+  snapshot();
+  const keepSettings = exam.settings, title = exam.title, src = exam._source;
+  exam = normalize(out); exam._source = src; exam.images = {}; if (!exam.title) exam.title = title;
+  exam.settings = Object.assign(keepSettings, { texts: exam.articles.length > 0 });
+  notes = [`הומר עם ${AI} מתוך ה-PDF. תמונות מה-PDF מתוארות במילים; אפשר להוסיף אותן בעריכה, בכפתור "תמונה".`]; editing = null;
   changed(true);
 }
 $('askForm').addEventListener('submit', async e => {
@@ -2127,8 +2426,8 @@ $('askForm').addEventListener('submit', async e => {
   const out = await runClaude(`Here is a Hebrew exam as JSON for a typing-friendly exam app (articles shortened to titles; keep them as they are). Apply the teacher's request and return the WHOLE updated exam JSON only.\n${SCHEMA_HELP}\n\nTEACHER'S REQUEST (Hebrew): ${req}\n\nEXAM JSON:\n${JSON.stringify(lean())}`, `${AI} משנה את המבחן…`);
   if (!out || !Array.isArray(out.parts)) return;
   snapshot();
-  const keepSettings = exam.settings, src = exam._source;
-  exam = normalize(keepArts(out, arts)); exam._source = src; exam.settings = Object.assign(keepSettings, out.settings || {});
+  const keepSettings = exam.settings, src = exam._source, pics = exam.images;
+  exam = normalize(keepArts(out, arts)); exam._source = src; exam.images = pics; exam.settings = Object.assign(keepSettings, out.settings || {});
   $('askIn').value = ''; notes = [`בוצע: ${req}`];
   changed(true);
 });

@@ -2,8 +2,11 @@
    Text tokens:  ___ blank · {a / b / c} choose one · [שורש] root boxes · **bold**
                  [בניין] [גזרה] [תפקיד] [חלק דיבר] [סוג משפט] [פסוקית] [קשר לוגי] [תצורה] [זמן] [גוף] [מין ומספר] ready-made lists
                  [רשימה:א / ב / ג] a list of your own · [מעל:מילה] box above a word · [מעל:מילה|תפקיד] list above a word
-                 [מאמר 2, פס' 3] link to an article
-   Blocks: text · passage · mc · long · table · essay · mark (click words) · split (mark boundaries) · sort · match */
+                 [מאמר 2, פס' 3] or [מאמר 2, פסקה ג] link to an article · [קו:מילים] underlined · [מסגרת:מילים] boxed
+                 [תמונה:img1] a picture from data.images
+   Blocks: text · passage · mc (num: options (1), (2)…) · long · table · essay · mark (click words) · split (mark boundaries;
+           label: a list name or "free", to name every part) · punct (add punctuation) · sort · match · img
+   Parts: alt (parts with the same alt are alternatives: answer one) · pick (answer only that many of the questions) */
 const XM_BINYANIM = ['פָּעַל (קל)', 'נִפְעַל', 'פִּעֵל', 'פֻּעַל', 'הִפְעִיל', 'הֻפְעַל', 'הִתְפַּעֵל'];
 const XM_LISTS = {
   'בניין': XM_BINYANIM,
@@ -41,7 +44,13 @@ function mountExam(root, data, opts) {
   const S = {}, FIELD = {}, ITEMS = [], SUBS = [];
   let cur = null, fc = 0;
   const nf = (type, label) => { const id = 'f' + (++fc); cur.fields.push(id); FIELD[id] = { item: cur, type, label: label || '' }; return id; };
-  const ctx = (str, off) => str.slice(Math.max(0, off - 50), off).replace(/\*\*|_{3,}|\{[^}]*\}|\[[^\]]*\]/g, ' ').trim().split(/\s+/).slice(-4).join(' ');
+  // the label of an answer place: the few words just before it, on its own line and after any earlier answer place
+  const ctx = (str, off) => {
+    const s = str.slice(Math.max(0, off - 60), off).split('\n').pop().replace(/^[^{[]*?[}\]]/, '').replace(/\*\*/g, '');
+    const parts = s.split(/_{3,}|\{[^}]*\}|\[[^\]]*\]/).map(x => x.trim());
+    const t = parts.pop() || parts.pop() || '';
+    return t.split(/\s+/).slice(-4).join(' ');
+  };
 
   function field(type, label, o) {
     o = o || {};
@@ -61,36 +70,64 @@ function mountExam(root, data, opts) {
     return `<span class="xm-ch ${cls || ''}" role="radiogroup">${opts2.map(v => `<button type="button" class="xm-opt" role="radio" aria-checked="false" data-f="${id}" data-v="${esc(v)}">${esc(v)}</button>`).join('')}</span>`;
   }
   const LISTNAMES = Object.keys(LISTS).join('|');
-  const TOK = new RegExp(String.raw`\*\*(.+?)\*\*|(_{3,})|\{([^{}]+?\s\/\s[^{}]+?)\}|\[שורש\]|\[(${LISTNAMES})\]|\[רשימה:([^\]]+)\]|\[מעל:([^\]|]+)(?:\|([^\]]+))?\]|\[(?:מאמר|טקסט|קטע)\s*(\d+)(?:\s*,\s*פס['׳]?\s*(\d+))?\]`, 'g');
+  // pictures from the Word file live in data.images, by id; only real images are shown
+  const IMG = data.images || {};
+  const imgHtml = (id, cls) => /^data:image\//.test(IMG[id] || '') ? `<img class="${cls || 'xm-img'}" src="${IMG[id]}" alt="">` : '';
+  // paragraphs may be counted 1, 2, 3 or א, ב, ג (a reference may use either)
+  const HEBN = [[400, 'ת'], [300, 'ש'], [200, 'ר'], [100, 'ק'], [90, 'צ'], [80, 'פ'], [70, 'ע'], [60, 'ס'], [50, 'נ'], [40, 'מ'], [30, 'ל'], [20, 'כ'], [10, 'י'], [9, 'ט'], [8, 'ח'], [7, 'ז'], [6, 'ו'], [5, 'ה'], [4, 'ד'], [3, 'ג'], [2, 'ב'], [1, 'א']];
+  const heb = n => { if (n === 15) return 'טו'; if (n === 16) return 'טז'; let s = ''; for (const [v, l] of HEBN) while (n >= v) { s += l; n -= v; } return s; };
+  const parNum = p => /^\d+$/.test(p) ? +p : [...String(p || '')].reduce((t, c) => t + ((HEBN.find(x => x[1] === c) || [0])[0]), 0);
+  const parLab = (A, n) => A && A.pl === 'letters' ? `פסקה ${heb(n)}` : `פס׳ ${n}`;
+  const TOK = new RegExp(String.raw`\*\*(?<b>.+?)\*\*|(?<blank>_{3,})|\{(?<ch>[^{}]+?\s\/\s[^{}]+?)\}|(?<root>\[שורש\])|\[(?<ls>${LISTNAMES})\]|\[רשימה:(?<cl>[^\]]+)\]|\[מעל:(?<ab>[^\]|]+)(?:\|(?<abl>[^\]]+))?\]|\[קו:(?<u>[^\]]+)\]|\[מסגרת:(?<box>[^\]]+)\]|\[תמונה:(?<img>[^\]\s]+)\]|\[(?:מאמר|טקסט|קטע)\s*(?<art>\d+)(?:\s*,\s*(?:פס['׳]?|פסקה)\s*(?<par>\d+|[א-ת]{1,2}))?\]`, 'g');
   function rich(text) {
     const s = String(text || '');
     let out = '', last = 0, m;
     TOK.lastIndex = 0;
+    const inner = (tag, cls, v) => { const save = TOK.lastIndex; const h = `<${tag}${cls ? ` class="${cls}"` : ''}>${rich(v)}</${tag}>`; TOK.lastIndex = save; return h; };
     while ((m = TOK.exec(s))) {
       out += esc(s.slice(last, m.index)).replace(/\n/g, '<br>');
       last = TOK.lastIndex;
-      const label = ctx(s, m.index);
-      if (m[1] !== undefined) { const save = TOK.lastIndex; out += `<b>${rich(m[1])}</b>`; TOK.lastIndex = save; }
-      else if (m[2]) out += field('text', label, { wide: m[2].length > 30 });
-      else if (m[3]) out += choiceHtml(m[3].split(/\s\/\s/).map(x => x.trim()).filter(Boolean), label);
-      else if (m[0] === '[שורש]') out += field('root', label ? label + ' · שורש' : 'שורש');
-      else if (m[4]) out += field('list', label ? `${label} · ${m[4]}` : m[4], { list: LISTS[m[4]] });
-      else if (m[5]) out += field('list', label || 'בחירה', { list: listOf(m[5]) || [m[5]] });
-      else if (m[6]) {
-        const w = m[6].trim(), list = m[7] ? listOf(m[7]) : null;
-        const inner = list ? field('list', `מעל ${w}`, { list }) : (() => { const id = nf('text', w); return `<input class="xm-a" data-f="${id}" type="text" autocomplete="off" spellcheck="false" aria-label="מעל ${esc(w)}">`; })();
-        out += `<span class="xm-lw">${inner}<b>${esc(w)}</b></span>`;
+      const g = m.groups, label = ctx(s, m.index);
+      if (g.b !== undefined) out += inner('b', '', g.b);
+      else if (g.u !== undefined) out += inner('u', '', g.u);
+      else if (g.box !== undefined) out += inner('span', 'xm-box', g.box);
+      else if (g.img) out += imgHtml(g.img) || '';
+      else if (g.blank) out += field('text', label, { wide: g.blank.length > 30 });
+      else if (g.ch) out += choiceHtml(g.ch.split(/\s\/\s/).map(x => x.trim()).filter(Boolean), label);
+      else if (g.root) out += field('root', label ? label + ' · שורש' : 'שורש');
+      else if (g.ls) out += field('list', label ? `${label} · ${g.ls}` : g.ls, { list: LISTS[g.ls] });
+      else if (g.cl) out += field('list', label || 'בחירה', { list: listOf(g.cl) || [g.cl] });
+      else if (g.ab) {
+        const w = g.ab.trim(), list = g.abl ? listOf(g.abl) : null;
+        const box = list ? field('list', `מעל ${w}`, { list }) : (() => { const id = nf('text', w); return `<input class="xm-a" data-f="${id}" type="text" autocomplete="off" spellcheck="false" aria-label="מעל ${esc(w)}">`; })();
+        out += `<span class="xm-lw">${box}<b>${esc(w)}</b></span>`;
       }
-      else if (m[8]) out += arts[+m[8] - 1] ? `<button type="button" class="xm-ref" data-a="${+m[8] - 1}" data-p="${m[9] || ''}">${esc(set.textItem)} ${m[8]}${m[9] ? ` · פס׳ ${m[9]}` : ''}</button>` : esc(m[0]);
+      else if (g.art) {
+        const a = +g.art - 1, p = g.par ? parNum(g.par) : 0;
+        out += arts[a] ? `<button type="button" class="xm-ref" data-a="${a}" data-p="${p || ''}">${esc(set.textItem)} ${g.art}${p ? ` · ${parLab(arts[a], p)}` : ''}</button>` : esc(m[0]);
+      }
     }
     return out + esc(s.slice(last)).replace(/\n/g, '<br>');
   }
+  // article paragraphs: formatting and pictures, no answer places
+  const ATOK = /\*\*(.+?)\*\*|\[קו:([^\]]+)\]|\[מסגרת:([^\]]+)\]|\[תמונה:([^\]\s]+)\]/g;
+  const artText = t => esc(String(t || '')).replace(/\[תמונה:([^\]\s]+)\]/g, (x, id) => imgHtml(id) || '').replace(ATOK, (x, b, u, box) => b !== undefined ? `<b>${b}</b>` : u !== undefined ? `<u>${u}</u>` : box !== undefined ? `<span class="xm-box">${box}</span>` : x).replace(/\n/g, '<br>');
+  const onlyImg = t => /^\s*\[תמונה:[^\]\s]+\]\s*$/.test(String(t || ''));
+  const MARKS = ['.', ',', ';', ':', '?', '!', '–', '״', '(', ')'];
   function block(b, i) {
     const t = b.t || 'text';
     if (t === 'passage') return `<p class="xm-passage">${rich(b.v)}</p>`;
+    if (t === 'img') { const h = imgHtml(b.src); return h ? `<figure class="xm-fig">${h}${b.cap ? `<figcaption>${esc(b.cap)}</figcaption>` : ''}</figure>` : ''; }
     if (t === 'mc') {
-      const id = nf('choice', 'תשובה'); const L = 'אבגדהוזחטי';
-      return `<div class="xm-mc" role="radiogroup">${(b.opts || []).map((o, k) => `<button type="button" class="xm-opt xm-mco" role="radio" aria-checked="false" data-f="${id}" data-v="${esc(L[k] + '. ' + o)}"><span class="xm-ml">${L[k]}</span><span>${rich(o)}</span></button>`).join('')}</div>`;
+      // options labelled א, ב, ג like most exams, or (1), (2), (3) when the exam numbers them
+      const id = nf('choice', 'תשובה'); const L = k => b.num ? `(${k + 1})` : 'אבגדהוזחטי'[k];
+      return `<div class="xm-mc" role="radiogroup">${(b.opts || []).map((o, k) => `<button type="button" class="xm-opt xm-mco" role="radio" aria-checked="false" data-f="${id}" data-v="${esc(L(k) + (b.num ? ' ' : '. ') + o)}"><span class="xm-ml">${L(k)}</span><span>${rich(o)}</span></button>`).join('')}</div>`;
+    }
+    if (t === 'punct') {
+      // a text without punctuation: the student adds a mark in the gap after any word
+      const words = String(b.v || '').split(/\s+/).filter(Boolean);
+      const id = nf('punct', 'הפיסוק'); FIELD[id].words = words.map(w => w.replace(/\*\*/g, '')); FIELD[id].marks = (b.marks && b.marks.length ? b.marks : MARKS);
+      return `<p class="xm-punct">${words.map((w, k) => `<span class="xm-sw">${fmt(w)}</span><button type="button" class="xm-pg" data-pu="${id}" data-i="${k}" aria-label="סימן פיסוק אחרי ${esc(w.replace(/\*\*/g, ''))}"></button>`).join(' ')}</p><p class="xm-hint">לחצו אחרי מילה כדי להוסיף שם סימן פיסוק. לחיצה על סימן קיים מאפשרת להחליף או למחוק אותו.</p>`;
     }
     if (t === 'long') { const id = nf('text', 'תשובה'); return `<textarea class="xm-a" data-f="${id}" rows="${b.rows || 3}" spellcheck="false" placeholder="כתבו כאן את התשובה" aria-label="תשובה"></textarea>`; }
     if (t === 'essay') {
@@ -101,7 +138,10 @@ function mountExam(root, data, opts) {
       const words = String(b.v || '').split(/\s+/).filter(Boolean);
       const id = nf('set', t === 'mark' ? 'המילים שסומנו' : 'החלוקה'); FIELD[id].words = words.map(w => w.replace(/\*\*/g, '')); FIELD[id].kind = t;
       if (t === 'mark') return `<p class="xm-mark">${words.map((w, k) => `<button type="button" class="xm-w" data-mk="${id}" data-i="${k}" aria-pressed="false">${fmt(w)}</button>`).join(' ')}</p><p class="xm-hint">לחצו על מילה כדי לסמן אותה, ולחיצה נוספת מבטלת.</p>`;
-      return `<p class="xm-split">${words.map((w, k) => `<span class="xm-sw">${fmt(w)}</span>` + (k < words.length - 1 ? `<button type="button" class="xm-gap" data-sp="${id}" data-i="${k}" aria-pressed="false" aria-label="גבול אחרי ${esc(w.replace(/\*\*/g, ''))}"></button>` : '')).join('')}</p><p class="xm-hint">לחצו על הרווח בין שתי מילים כדי לסמן שם גבול (/), ולחיצה נוספת מבטלת.</p>`;
+      // with a label, every part between the boundaries also gets a role, a clause type or free text
+      if (b.label) FIELD[id].seg = { name: b.label === 'free' ? '' : b.label, list: b.label === 'free' ? null : listOf(b.label) };
+      const segHint = b.label ? ` אחר כך ציינו ליד כל חלק את ${b.label === 'free' ? 'מה שנדרש' : 'ה' + b.label}.` : '';
+      return `<p class="xm-split">${words.map((w, k) => `<span class="xm-sw">${fmt(w)}</span>` + (k < words.length - 1 ? `<button type="button" class="xm-gap" data-sp="${id}" data-i="${k}" aria-pressed="false" aria-label="גבול אחרי ${esc(w.replace(/\*\*/g, ''))}"></button>` : '')).join('')}</p>${b.label ? `<div class="xm-segs" data-segs="${id}"></div>` : ''}<p class="xm-hint">לחצו על הרווח בין שתי מילים כדי לסמן שם גבול (/), ולחיצה נוספת מבטלת.${segHint}</p>`;
     }
     if (t === 'sort') {
       const items = (b.items || []).filter(Boolean), n = Math.max(2, Math.min(5, +b.cols || 2)), sid = 'srt' + (++sortN);
@@ -136,16 +176,28 @@ function mountExam(root, data, opts) {
   const ptsTxt = p => (p || p === 0) && p !== '' ? `<span class="xm-pts">${p} נק׳</span>` : '';
 
   let sheet = '';
-  if (data.instructions && data.instructions.length) sheet += `<details class="xm-instr" open><summary>הוראות לנבחן</summary>${data.instructions.map(l => `<p>${esc(l)}</p>`).join('')}</details>`;
-  (data.parts || []).forEach((part, pi) => {
+  if (data.instructions && data.instructions.length) sheet += `<details class="xm-instr" open><summary>הוראות לנבחן</summary>${data.instructions.map(l => `<p>${artText(l)}</p>`).join('')}</details>`;
+  // choices: parts that share an "alt" group are alternatives (the student answers one of them),
+  // and a part with "pick" asks for only that many of its questions
+  const PARTS = data.parts || [], ALT = {};
+  PARTS.forEach((p, pi) => { if (p.alt) (ALT[p.alt] = ALT[p.alt] || []).push(pi); });
+  const altOf = pi => { const g = PARTS[pi] && PARTS[pi].alt; return g && ALT[g].length > 1 ? g : ''; };
+  const pickOf = pi => { const p = PARTS[pi], n = Math.floor(+(p && p.pick) || 0); return n > 0 && n < (p.qs || []).length ? n : 0; };
+  PARTS.forEach((part, pi) => {
+    const grp = altOf(pi);
+    if (grp && ALT[grp][0] === pi) sheet += `<div class="xm-alt" data-alt="${esc(grp)}"><b>בפרקים הבאים בוחרים פרק אחד. באיזה פרק תענו?</b><div class="xm-row">${ALT[grp].map(k => `<button type="button" class="xm-btn" data-altp="${k}" aria-pressed="false">${esc(PARTS[k].title || 'פרק ' + (k + 1))}</button>`).join('')}</div></div>`;
+    sheet += `<div class="xm-pw" data-pw="${pi}">`;
     if (part.title || opts.editable) sheet += `<div class="xm-part"><h2>${esc(part.title || 'חלק ללא שם')}</h2>${part.pts ? `<span>${esc(part.pts)}</span>` : ''}${opts.editable ? `<button type="button" class="xm-edit" data-editpart="${pi}">✎ עריכה</button>` : ''}</div>`;
     if (part.note) sheet += `<p class="xm-pnote">${rich(part.note)}</p>`;
+    if (pickOf(pi)) sheet += `<p class="xm-pickinfo" data-pickinfo="${pi}"></p>`;
+    if (grp) sheet += `<p class="xm-poff">לא בחרתם בפרק הזה. <button type="button" class="xm-btn" data-altp="${pi}">לענות על הפרק הזה</button></p>`;
     (part.qs || []).forEach((q, qi) => {
       const qid = `xq${pi}-${qi}`;
       sheet += `<section class="xm-q" id="${qid}">${opts.editable ? `<button type="button" class="xm-edit" data-edit="${pi}.${qi}">✎ עריכה</button>` : ''}`;
+      if (pickOf(pi)) sheet += `<label class="xm-pick"><input type="checkbox" data-pick="${pi}.${qi}"> בחרתי לענות על שאלה ${esc(q.n)}</label>`;
       const hasIntro = q.intro && q.intro.length;
       if (hasIntro) {
-        cur = { id: qid + 'i', label: String(q.n || ''), nav: String(q.n || ''), part: pi, fields: [] };
+        cur = { id: qid + 'i', label: String(q.n || ''), nav: String(q.n || ''), part: pi, q: qi, fields: [] };
         const html = q.intro.map(block).join('');
         if (cur.fields.length) ITEMS.push(cur);
         sheet += `<div class="xm-qh" id="${cur.id}"><span class="xm-qn">${esc(q.n)}.</span><div class="xm-qi">${html}</div></div>`;
@@ -153,7 +205,7 @@ function mountExam(root, data, opts) {
       (q.subs || []).forEach((s, si) => {
         const id = `${qid}-${si}`;
         const lab = String(s.l || '');
-        cur = { id, label: String(q.n || '') + lab, nav: String(q.n || '') + lab.replace(/[()\s]/g, ''), part: pi, fields: [] };
+        cur = { id, label: String(q.n || '') + lab, nav: String(q.n || '') + lab.replace(/[()\s]/g, ''), part: pi, q: qi, fields: [] };
         const blocks = s.blocks || [];
         const first = blocks[0] && (blocks[0].t || 'text') === 'text' ? blocks[0] : null;
         const headHtml = first ? rich(first.v) : '';
@@ -165,6 +217,7 @@ function mountExam(root, data, opts) {
       });
       sheet += `</section>`;
     });
+    sheet += `</div>`;
   });
   if (opts.editable) sheet += `<div class="xm-row" style="justify-content:center"><button type="button" class="xm-btn" data-addq>+ שאלה חדשה בסוף</button></div>`;
   sheet += `<div class="xm-end"><span>סוף המבחן. לפני ההגשה יוצגו כל הסעיפים שעדיין חסרים.</span><button type="button" class="xm-btn primary" data-act="submit">מעבר להגשה</button></div>`;
@@ -234,11 +287,54 @@ function mountExam(root, data, opts) {
   const saveUi = () => store.set('ui', ui);
 
   const filled = id => {
-    const v = S[id], t = FIELD[id].type;
+    const v = S[id], f = FIELD[id], t = f.type;
     if (t === 'root') return Array.isArray(v) && v.filter(Boolean).length >= 3;
-    if (t === 'set') return Array.isArray(v) && v.length > 0;
+    if (t === 'set') return Array.isArray(v) && v.length > 0 && (!f.seg || Object.values(S[id + ':L'] || {}).some(x => String(x).trim()));
+    if (t === 'punct') return !!v && Object.values(v).some(Boolean);
     return v != null && String(v).trim() !== '';
   };
+  // which parts and questions the student is answering
+  const qChosen = (pi, qi) => !!(meta.pick && meta.pick[pi + '.' + qi]) || ITEMS.some(i => i.part === pi && i.q === qi && i.fields.some(filled));
+  const partOn = pi => { const g = altOf(pi); return !g || !meta.alt || meta.alt[g] == null || meta.alt[g] === pi; };
+  const active = it => partOn(it.part) && (!pickOf(it.part) || qChosen(it.part, it.q));
+  const pickCount = pi => (PARTS[pi].qs || []).filter((x, qi) => qChosen(pi, qi)).length;
+  function applyChoices() {
+    PARTS.forEach((p, pi) => {
+      const w = q(`[data-pw="${pi}"]`); if (w) w.classList.toggle('off', !partOn(pi));
+      const n = pickOf(pi); if (!n) return;
+      const k = pickCount(pi), info = q(`[data-pickinfo="${pi}"]`);
+      if (info) { info.textContent = `בחלק הזה עונים על ${n} מתוך ${p.qs.length} השאלות. בחרתם ${k}.${k > n ? ` זה יותר מ-${n}.` : ''}`; info.classList.toggle('over', k > n); info.classList.toggle('ok', k === n); }
+      p.qs.forEach((x, qi) => {
+        const c = q(`[data-pick="${pi}.${qi}"]`), on = qChosen(pi, qi); if (c) c.checked = on;
+        const sec = q(`#xq${pi}-${qi}`); if (sec) sec.classList.toggle('unpicked', !on && k >= n);
+      });
+    });
+    Object.keys(ALT).forEach(g => qa(`[data-alt="${g}"] [data-altp]`).forEach(b => b.setAttribute('aria-pressed', String(!!meta.alt && meta.alt[g] === +b.dataset.altp))));
+  }
+  function renderSegs(id) {
+    const box = q(`[data-segs="${id}"]`), f = FIELD[id]; if (!box || !f.seg) return;
+    const cuts = S[id] || [], labs = S[id + ':L'] || {}, segs = []; let st = 0;
+    [...cuts, f.words.length - 1].forEach(c => { if (c >= st) { segs.push([st, c]); st = c + 1; } });
+    box.innerHTML = segs.map(([a, z]) => {
+      const v = labs[a] || '', txt = f.words.slice(a, z + 1).join(' ');
+      const ctl = f.seg.list ? `<select class="xm-a${v ? ' has' : ''}" data-sl="${id}" data-st="${a}" aria-label="${esc(txt)}"><option value="">${esc(f.seg.name)}…</option>${f.seg.list.map(o => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`
+        : `<input class="xm-a${v ? ' has' : ''}" data-sl="${id}" data-st="${a}" type="text" value="${esc(v)}" autocomplete="off" spellcheck="false" aria-label="${esc(txt)}">`;
+      return `<div class="xm-segr"><span>${esc(txt)}</span>${ctl}</div>`;
+    }).join('');
+  }
+  function setSeg(el) { const id = el.dataset.sl, labs = Object.assign({}, S[id + ':L'] || {}); labs[el.dataset.st] = el.value; S[id + ':L'] = labs; markHas(el); save(); refresh(FIELD[id].item); }
+  let pmenu = null;
+  const closePunct = () => { if (pmenu) { pmenu.remove(); pmenu = null; } };
+  function openPunct(btn) {
+    closePunct();
+    const id = btn.dataset.pu, f = FIELD[id], r = btn.getBoundingClientRect();
+    const m = document.createElement('div'); m.className = 'xm-pmenu'; m.setAttribute('role', 'menu');
+    m.dataset.pu = id; m.dataset.i = btn.dataset.i;
+    m.innerHTML = f.marks.map(x => `<button type="button" role="menuitem" data-pm="${esc(x)}">${esc(x)}</button>`).join('') + '<button type="button" role="menuitem" class="clr" data-pm="">ללא</button>';
+    m.style.top = Math.min(window.innerHeight - 60, r.bottom + 4) + 'px'; m.style.left = Math.max(4, Math.min(window.innerWidth - 280, r.left - 120)) + 'px';
+    root.appendChild(m); pmenu = m; m.querySelector('button').focus();
+  }
+  function showPunct(id) { const v = S[id] || {}; qa(`[data-pu="${id}"]`).forEach(b => { const x = v[b.dataset.i] || ''; b.textContent = x; b.classList.toggle('has', !!x); }); }
   const words = s => (String(s || '').trim().match(/\S+/g) || []).length;
   function essayCount(id) {
     const el = q(`[data-wc="${id}"]`); if (!el) return;
@@ -260,14 +356,17 @@ function mountExam(root, data, opts) {
   function place(id, col) { picked = null; setVal(id, col); Object.keys(SORTS).forEach(renderSort); }
   const status = it => { const n = it.fields.filter(filled).length; return n === 0 ? 'empty' : n === it.fields.length ? 'done' : 'partial'; };
   function refresh(only) {
-    (only ? [only] : ITEMS).forEach(i => {
+    applyChoices();
+    // a choice can change which items count, so the chips of every item are refreshed
+    ITEMS.forEach(i => {
       const st = status(i);
-      const dot = root.querySelector(`#${i.id} .xm-st`); if (dot) dot.className = 'xm-st ' + st;
-      const ch = q(`[data-go="${i.id}"]`); if (ch) ch.className = 'xm-chip ' + st + (ch.classList.contains('here') ? ' here' : '');
+      if (!only || i === only) { const dot = root.querySelector(`#${i.id} .xm-st`); if (dot) dot.className = 'xm-st ' + st; }
+      const ch = q(`[data-go="${i.id}"]`); if (ch) ch.className = 'xm-chip ' + st + (active(i) ? '' : ' off') + (ch.classList.contains('here') ? ' here' : '');
     });
-    let d = 0, p = 0; ITEMS.forEach(i => { const s = status(i); if (s === 'done') d++; else if (s === 'partial') p++; });
-    const n = ITEMS.length || 1;
-    q('[data-prog]').textContent = `${d}/${ITEMS.length}`;
+    const act = ITEMS.filter(active);
+    let d = 0, p = 0; act.forEach(i => { const s = status(i); if (s === 'done') d++; else if (s === 'partial') p++; });
+    const n = act.length || 1;
+    q('[data-prog]').textContent = `${d}/${act.length}`;
     q('[data-bd]').style.width = d / n * 100 + '%'; q('[data-bp]').style.width = p / n * 100 + '%';
   }
   const markHas = el => el.classList.toggle('has', el.value.trim() !== '');
@@ -276,6 +375,7 @@ function mountExam(root, data, opts) {
     qa('[data-f]').forEach(el => { const id = el.dataset.f; if (el.classList.contains('xm-opt')) el.setAttribute('aria-checked', String(S[id] === el.dataset.v)); else { el.value = S[id] == null ? '' : S[id]; markHas(el); } });
     qa('[data-rf]').forEach(el => { const v = S[el.dataset.rf] || []; el.value = v[+el.dataset.i] || ''; markHas(el); });
     qa('[data-mk], [data-sp]').forEach(el => { const v = S[el.dataset.mk || el.dataset.sp] || []; el.setAttribute('aria-pressed', String(v.includes(+el.dataset.i))); });
+    Object.keys(FIELD).forEach(id => { if (FIELD[id].seg) renderSegs(id); if (FIELD[id].type === 'punct') showPunct(id); });
     Object.keys(SORTS).forEach(renderSort);
     Object.keys(FIELD).forEach(id => { if (FIELD[id].essay) essayCount(id); });
     q('[data-name]').value = meta.name || ''; const ex = q('[data-ext]'); if (ex) ex.checked = !!meta.ext;
@@ -308,7 +408,9 @@ function mountExam(root, data, opts) {
     curArt = a; const A = arts[a];
     qa('.xm-tab').forEach(t => t.setAttribute('aria-selected', String(+t.dataset.tab === a)));
     const ab = q('[data-ab]');
-    ab.innerHTML = `<h4>${esc(A.title || set.textItem + ' ' + (a + 1))}</h4>${A.by ? `<p class="xm-by">${esc(A.by)}</p>` : ''}${(A.ps || []).map((t, i) => `<div class="xm-para" data-pp="${i + 1}"><span>פס׳ ${i + 1}</span><p>${esc(t)}</p></div>`).join('')}`;
+    // a paragraph that is only a picture (a chart, an infographic) is shown without a number
+    let n = 0;
+    ab.innerHTML = `<h4>${esc(A.title || set.textItem + ' ' + (a + 1))}</h4>${A.by ? `<p class="xm-by">${esc(A.by)}</p>` : ''}${(A.ps || []).map(t => onlyImg(t) ? `<div class="xm-para pic">${artText(t)}</div>` : `<div class="xm-para" data-pp="${++n}"><span>${parLab(A, n)}</span><p>${artText(t)}</p></div>`).join('')}`;
     const el = p && ab.querySelector(`[data-pp="${p}"]`);
     if (el) requestAnimationFrame(() => { ab.scrollTop = el.offsetTop - 8; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); });
     else ab.scrollTop = 0;
@@ -351,6 +453,7 @@ function mountExam(root, data, opts) {
     if (t.hasAttribute('data-name')) { meta.name = t.value; save(); return; }
     if (t.hasAttribute('data-draftta')) { meta.draft = t.value; save(); return; }
     if (t.dataset.f) { markHas(t); setVal(t.dataset.f, t.value); if (FIELD[t.dataset.f].essay) essayCount(t.dataset.f); return; }
+    if (t.dataset.sl && t.tagName === 'INPUT') { setSeg(t); return; }
     if (t.dataset.rf) {
       t.value = t.value.replace(/[^א-ת]/g, '').slice(-1); markHas(t);
       const id = t.dataset.rf, arr = (S[id] || ['', '', '', '']).slice(); arr[+t.dataset.i] = t.value; setVal(id, arr);
@@ -359,12 +462,14 @@ function mountExam(root, data, opts) {
   });
   root.addEventListener('change', e => {
     if (e.target.matches('select[data-f]')) { markHas(e.target); setVal(e.target.dataset.f, e.target.value); }
+    if (e.target.matches('select[data-sl]')) setSeg(e.target);
+    if (e.target.hasAttribute('data-pick')) { meta.pick = Object.assign({}, meta.pick, { [e.target.dataset.pick]: e.target.checked }); save(); refresh(); }
     if (e.target.hasAttribute('data-ext')) { meta.ext = e.target.checked; save(); tick(); }
   });
   root.addEventListener('keydown', e => {
     const t = e.target;
     if (t.dataset && t.dataset.rf && e.key === 'Backspace' && !t.value) { const pv = t.parentElement.querySelector(`[data-i="${+t.dataset.i - 1}"]`); if (pv) { e.preventDefault(); pv.focus(); } }
-    if (e.key === 'Escape') { const a = q('[data-arts]'); if (a && a.classList.contains('full')) { setFull(false); return; } q('[data-modal]').hidden = true; if (narrow()) setArts(false); }
+    if (e.key === 'Escape') { if (pmenu) { const b = q(`[data-pu="${pmenu.dataset.pu}"][data-i="${pmenu.dataset.i}"]`); closePunct(); if (b) b.focus(); return; } const a = q('[data-arts]'); if (a && a.classList.contains('full')) { setFull(false); return; } q('[data-modal]').hidden = true; if (narrow()) setArts(false); }
   });
   root.addEventListener('dragstart', e => { const c = e.target.closest && e.target.closest('[data-chip]'); if (c) { e.dataTransfer.setData('text/plain', c.dataset.chip); e.dataTransfer.effectAllowed = 'move'; } });
   root.addEventListener('dragover', e => { const d = e.target.closest && e.target.closest('.xm-drop'); if (d) { e.preventDefault(); d.classList.add('over'); } });
@@ -385,13 +490,28 @@ function mountExam(root, data, opts) {
   }
   root.addEventListener('click', e => {
     const t = e.target;
+    const pm = t.closest('[data-pm]');
+    if (pm && pmenu) {
+      const id = pmenu.dataset.pu, k = pmenu.dataset.i, v = Object.assign({}, S[id] || {});
+      if (pm.dataset.pm) v[k] = pm.dataset.pm; else delete v[k];
+      closePunct(); setVal(id, v); showPunct(id); const b = q(`[data-pu="${id}"][data-i="${k}"]`); if (b) b.focus(); return;
+    }
+    if (pmenu && !t.closest('.xm-pmenu')) closePunct();
+    const pg = t.closest('[data-pu]'); if (pg) { openPunct(pg); return; }
+    const altp = t.closest('[data-altp]');
+    if (altp) {
+      const pi = +altp.dataset.altp, g = altOf(pi); if (!g) return;
+      meta.alt = Object.assign({}, meta.alt, { [g]: pi }); save(); refresh();
+      const w = q(`[data-pw="${pi}"]`), col = q('[data-col]'); if (w && altp.closest('.xm-poff')) col.scrollTop += w.getBoundingClientRect().top - col.getBoundingClientRect().top - 12;
+      return;
+    }
     const opt = t.closest('.xm-opt[data-f]');
     if (opt) { const id = opt.dataset.f, v = S[id] === opt.dataset.v ? '' : opt.dataset.v; qa(`.xm-opt[data-f="${id}"]`).forEach(o => o.setAttribute('aria-checked', String(o.dataset.v === v))); setVal(id, v); return; }
     const tog = t.closest('[data-mk], [data-sp]');
     if (tog) {
       const id = tog.dataset.mk || tog.dataset.sp, i = +tog.dataset.i, v = (S[id] || []).slice(), k = v.indexOf(i);
       if (k >= 0) v.splice(k, 1); else v.push(i);
-      v.sort((a, b) => a - b); tog.setAttribute('aria-pressed', String(k < 0)); setVal(id, v); return;
+      v.sort((a, b) => a - b); tog.setAttribute('aria-pressed', String(k < 0)); setVal(id, v); if (FIELD[id].seg) renderSegs(id); return;
     }
     const chip = t.closest('[data-chip]');
     if (chip) { const id = chip.dataset.chip; picked = picked === id ? null : id; Object.keys(SORTS).forEach(renderSort); const again = q(`[data-chip="${id}"]`); if (again) again.focus(); return; }
@@ -441,31 +561,50 @@ function mountExam(root, data, opts) {
   const timer = setInterval(() => { if (!root.isConnected) clearInterval(timer); else tick(); }, 1000);
 
   /* ---------- submit ---------- */
+  function choiceWarnings() {
+    const w = [];
+    Object.keys(ALT).forEach(g => { if (ALT[g].length > 1 && (!meta.alt || meta.alt[g] == null)) w.push(`לא בחרתם באיזה פרק לענות: ${ALT[g].map(pi => PARTS[pi].title || 'פרק ' + (pi + 1)).join(' או ')}.`); });
+    PARTS.forEach((p, pi) => {
+      const n = pickOf(pi); if (!n || !partOn(pi)) return;
+      const k = pickCount(pi), name = p.title || 'חלק ' + (pi + 1);
+      if (k < n) w.push(`ב${name} צריך לענות על ${n} שאלות, ובחרתם ${k}.`);
+      if (k > n) w.push(`ב${name} עניתם על ${k} שאלות, אבל צריך לענות רק על ${n}.`);
+    });
+    return w;
+  }
   function openSubmit() {
-    const missing = ITEMS.filter(i => status(i) !== 'done');
-    q('[data-mbody]').innerHTML = !missing.length ? `<p class="xm-ok">כל ${ITEMS.length} הסעיפים נענו.</p>`
-      : `<p>נשארו <b>${missing.length}</b> סעיפים שלא נענו במלואם. לחיצה על סעיף מעבירה אליו.</p><div class="xm-miss">${missing.map(i => { const st = status(i), n = i.fields.filter(filled).length; return `<button type="button" data-miss="${i.id}"><span>סעיף ${esc(i.label)}</span><em class="${st === 'empty' ? 'e' : ''}">${st === 'empty' ? 'ריק' : `חלקי · ${n} מתוך ${i.fields.length}`}</em></button>`; }).join('')}</div>`;
-    q('[data-act="confirm"]').textContent = missing.length ? 'הגשה בכל זאת' : 'הגשה';
+    const act = ITEMS.filter(active), missing = act.filter(i => status(i) !== 'done'), warn = choiceWarnings();
+    q('[data-mbody]').innerHTML = (warn.length ? `<div class="xm-warn">${warn.map(x => `<p>${esc(x)}</p>`).join('')}</div>` : '') + (!missing.length ? `<p class="xm-ok">כל ${act.length} הסעיפים נענו.</p>`
+      : `<p>נשארו <b>${missing.length}</b> סעיפים שלא נענו במלואם. לחיצה על סעיף מעבירה אליו.</p><div class="xm-miss">${missing.map(i => { const st = status(i), n = i.fields.filter(filled).length; return `<button type="button" data-miss="${i.id}"><span>סעיף ${esc(i.label)}</span><em class="${st === 'empty' ? 'e' : ''}">${st === 'empty' ? 'ריק' : `חלקי · ${n} מתוך ${i.fields.length}`}</em></button>`; }).join('')}</div>`);
+    q('[data-act="confirm"]').textContent = missing.length || warn.length ? 'הגשה בכל זאת' : 'הגשה';
     q('[data-modal]').hidden = false; q('[data-act="back"]').focus();
   }
   const readable = id => {
     const v = S[id], f = FIELD[id]; if (!filled(id)) return null;
     if (f.type === 'root') return v.filter(Boolean).join('-');
     if (f.type === 'set' && f.kind === 'mark') return v.map(i => f.words[i]).join(' · ');
+    if (f.type === 'set' && f.seg) {
+      const labs = S[id + ':L'] || {}, out = []; let st = 0;
+      [...v, f.words.length - 1].forEach(c => { if (c >= st) { out.push(f.words.slice(st, c + 1).join(' ') + (labs[st] ? ` (${labs[st]})` : '')); st = c + 1; } });
+      return out.join(' / ');
+    }
     if (f.type === 'set') return f.words.map((w, i) => w + (v.includes(i) ? ' /' : '')).join(' ');
+    if (f.type === 'punct') return f.words.map((w, i) => w + (v[i] || '')).join(' ');
     if (f.type === 'sort') { const h = S[f.sort.heads[+v]]; return h ? `${h} (עמודה ${+v + 1})` : `עמודה ${+v + 1}`; }
     if (f.essay) return `${v}\n(${words(v)} מילים)`;
     return String(v);
   };
   function rows() {
-    const r = []; ITEMS.forEach(it => it.fields.forEach((id, k) => r.push({ item: it.label, first: k === 0, span: it.fields.length, label: FIELD[id].label, v: readable(id) })));
+    // the parts and questions the student chose, and anything else the student answered anyway
+    const r = []; ITEMS.filter(it => active(it) || it.fields.some(filled)).forEach(it => it.fields.forEach((id, k) => r.push({ item: it.label, first: k === 0, span: it.fields.length, label: FIELD[id].label, v: readable(id) })));
     if (meta.draft && meta.draft.trim()) r.push({ item: 'טיוטה', first: true, span: 1, label: 'לא נבדקת', v: meta.draft });
     return r;
   }
   function showResult() {
     const rs = rows();
     q('[data-rsheet]').innerHTML = `<table>${rs.map(r => `<tr>${r.first ? `<th rowspan="${r.span}">${esc(r.item)}</th>` : ''}<td class="k">${esc(r.label)}</td><td class="v${r.v === null ? ' blank' : ''}">${r.v === null ? 'לא נענה' : esc(r.v)}</td></tr>`).join('')}</table>`;
-    q('[data-rmeta]').textContent = `${meta.name || 'ללא שם'} · ${ITEMS.filter(i => status(i) === 'done').length} מתוך ${ITEMS.length} סעיפים נענו במלואם`;
+    const act = ITEMS.filter(active);
+    q('[data-rmeta]').textContent = `${meta.name || 'ללא שם'} · ${act.filter(i => status(i) === 'done').length} מתוך ${act.length} סעיפים נענו במלואם`;
     q('[data-res]').hidden = false; q('[data-res]').scrollTop = 0;
   }
   const plain = () => `${data.title || 'מבחן'} · ${meta.name || 'ללא שם'}\n\n` + rows().map(r => `${r.item}${r.label ? ' · ' + r.label : ''}: ${r.v == null ? '—' : r.v}`).join('\n');

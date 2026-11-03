@@ -239,6 +239,43 @@ select.xm-a { padding: 3px 6px; cursor: pointer; font-size: .95em; }
 .xm-draft textarea.xm-a { flex: 1; border: 0; border-radius: 0; resize: none; background: var(--sheet); font-size: 1em; }
 .xm.phone .xm-scols { grid-template-columns: minmax(0, 1fr); }
 
+/* pictures, marked text, clause labels, punctuation */
+.xm-img { max-width: min(100%, 520px); max-height: 420px; height: auto; border-radius: 6px; border: 1px solid var(--line-soft); vertical-align: middle; }
+.xm-fig { margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.xm-fig figcaption { font-size: .82em; color: var(--muted); }
+.xm-para.pic { display: block; text-align: center; }
+.xm-para.pic .xm-img { max-width: 100%; max-height: none; }
+.xm-box { border: 1.5px solid var(--text); padding: 0 4px; border-radius: 2px; }
+.xm u { text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.xm-segs { display: flex; flex-direction: column; gap: 6px; }
+.xm-segr { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paper); border: 1px solid var(--line-soft); border-radius: 8px; padding: 5px 10px; }
+.xm-segr span { flex: 1; min-width: 10em; font-family: var(--f-text); font-size: 1.05em; }
+.xm-segr .xm-a { width: 13em; }
+.xm-punct { margin: 0; font-family: var(--f-text); font-size: 1.12em; line-height: 2.2; background: var(--paper); border: 1px solid var(--line-soft); border-radius: 8px; padding: 8px 12px; }
+.xm-pg { display: inline-block; vertical-align: middle; min-width: 14px; height: 1.6em; margin: 0 -2px 0 1px; padding: 0 2px; border: 0; border-radius: 4px; background: transparent; font-family: var(--f-text); font-size: 1.2em; font-weight: 700; color: var(--ink); line-height: 1; position: relative; }
+.xm-pg:not(.has)::after { content: ""; position: absolute; top: 30%; bottom: 30%; left: 50%; width: 1px; background: var(--line); }
+.xm-pg:hover { background: var(--ink-soft); }
+.xm-pmenu { position: fixed; z-index: 30; display: flex; flex-wrap: wrap; gap: 4px; max-width: 270px; padding: 6px; background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.18); }
+.xm-pmenu button { min-width: 2.2em; height: 2.2em; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-family: var(--f-text); font-size: 1.1em; font-weight: 700; }
+.xm-pmenu button:hover, .xm-pmenu button:focus-visible { border-color: var(--ink); color: var(--ink); }
+.xm-pmenu .clr { font-family: var(--f-ui); font-size: .85em; font-weight: 600; padding: 0 8px; color: var(--muted); }
+
+/* choosing a chapter or some of the questions */
+.xm-alt { border: 1.5px solid var(--ink); background: var(--ink-soft); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.xm-alt .xm-btn[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.xm-poff { display: none; margin: 6px 0 0; color: var(--muted); }
+.xm-pw.off .xm-poff { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.xm-pw.off .xm-q, .xm-pw.off .xm-pickinfo { display: none; }
+.xm-pw.off .xm-part h2 { color: var(--muted); }
+.xm-pickinfo { margin: 0; font-weight: 700; color: var(--muted); }
+.xm-pickinfo.ok { color: var(--done); }
+.xm-pickinfo.over { color: var(--partial); }
+.xm-pick { display: inline-flex; align-items: center; gap: 6px; font-size: .85em; font-weight: 700; color: var(--ink); margin-bottom: 4px; cursor: pointer; }
+.xm-q.unpicked { opacity: .55; }
+.xm-chip.off { opacity: .35; }
+.xm-warn { border: 1px solid var(--partial); background: var(--partial-soft); color: var(--partial); border-radius: 8px; padding: 6px 12px; margin-bottom: 10px; font-weight: 600; }
+.xm-warn p { margin: 4px 0; }
+
 /* converter preview: edit handles */
 .xm-q, .xm-part { position: relative; }
 .xm-edit { position: absolute; left: 10px; top: 10px; z-index: 2; border: 1px solid var(--ink); background: var(--sheet); color: var(--ink); border-radius: 99px; padding: 2px 12px; font-weight: 700; font-size: .82em; box-shadow: var(--shadow); }
