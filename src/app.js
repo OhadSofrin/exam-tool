@@ -605,10 +605,10 @@ Tokens inside "v", table cells, options and items:
  [מאמר N, פס' M] link to article N paragraph M (after every reference to an article) · **bold**
 Rules: keep the exam's wording, nikud and numbering exactly. "l" is the sub label like "א" or "ב(2)"; the first block of a sub is its question text. Points like "(3 נק')" go to "pts", not the text. Every sub must have somewhere to answer. Prefer the most specific type: tables with root/binyan/גזרה/משקל columns use [שורש], [בניין], [גזרה] in empty cells; syntax roles use [מעל:..|תפקיד]; clause types use [פסוקית]; sentence types use [סוג משפט]; logical relations use [קשר לוגי]. Drop page-break notes, draft pages, cover name/class lines and any answers a student already wrote.`;
 const CLAUDE_ERRORS = {
-  rate_limited: WEB ? 'הגעתם למגבלה של המפתח החינמי. מחכים דקה ומנסים שוב. אם נגמרה המכסה היומית, היא מתחדשת מחר.' : 'יש כרגע עומס או שהגעתם למגבלת השימוש. נסו שוב בעוד כמה דקות.',
+  rate_limited: WEB ? 'הגעתם למגבלה של המפתח החינמי. מחכים דקה ומנסים שוב. אם נגמרה המכסה היומית, היא מתחדשת מחר.' : CANVAS ? 'נגמרה המכסה של Gemini Pro בחשבון הזה. היא מתחדשת לבד אחרי כמה שעות, לפעמים רק למחרת, ואז אפשר לנסות שוב. המבחן שמור ולא נפגע.' : 'יש כרגע עומס או שהגעתם למגבלת השימוש. נסו שוב בעוד כמה דקות.',
   not_granted: CANVAS ? 'Gemini לא אישר בקשות מהחשבון הזה. בדקו שאתם מחוברים לחשבון Google. בחשבון של בית ספר ייתכן שמנהל המערכת חסם את Gemini באפליקציות, ואז אפשר להיכנס עם חשבון Google פרטי.' : 'לא אושרה גישה ל-Claude.',
   bad_key: 'מפתח ה-Gemini לא עובד. בדקו אותו בחיבור ל-Gemini.',
-  model_missing: 'המודל שנבחר כבר לא זמין. בחרו מודל אחר בחיבור ל-Gemini.',
+  model_missing: CANVAS ? 'Gemini Pro לא זמין כרגע בחשבון הזה.' : 'המודל שנבחר כבר לא זמין. בחרו מודל אחר בחיבור ל-Gemini.',
   network: 'אין חיבור לאינטרנט. בדקו את החיבור ונסו שוב.',
   refusal: `${WEB ? 'Gemini' : 'Claude'} סירב לבצע את הבקשה הזו. נסו לנסח אחרת.`,
   too_large: 'המבחן ארוך מדי לבקשה אחת.'
@@ -742,31 +742,28 @@ const geminiSample = {
     return parseJsonText(text);
   }
 };
-// Gemini Canvas: the loader makes the call, so it runs on the account of whoever opened the Canvas.
-// Not every account may use the loader's model, so on a refusal the page tries the models every Canvas account gets
-// (Canvas adds the key to any Gemini call the page makes).
-const CANVAS_MODELS = ['gemini-2.5-flash-preview-09-2025', 'gemini-2.5-flash'];
-const canvasCall = (model, body, signal) => model
-  ? fetch(`${GEM}/models/${model}:generateContent?key=`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
-  : window.XM_CANVAS.generate(body, signal);
+// Gemini Canvas: Canvas adds the key to any Gemini call the page makes, so it runs on the account of whoever opened it.
+// Pro models only, newest first; the next one is tried only when an account cannot use the one before it.
+const CANVAS_MODELS = ['gemini-3-pro-preview', 'gemini-2.5-pro'];
+const canvasCall = (model, body, signal) => fetch(`${GEM}/models/${model}:generateContent?key=`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
 const canvasSample = {
   async json(prompt, opts) {
     opts = opts || {};
     const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 65536 } };
-    const models = [null, ...CANVAS_MODELS];
+    const models = CANVAS_MODELS;
     let res, wait = 2000;
     for (let m = 0, attempt = 0; ; attempt++) {
       try { res = await canvasCall(models[m], body, opts.signal); }
       catch (e) { throw { code: e && e.name === 'AbortError' ? 'cancelled' : 'network' }; }
       if (res.status === 400 && body.generationConfig.maxOutputTokens) { delete body.generationConfig.maxOutputTokens; continue; }
       if ((res.status === 429 || res.status === 503) && attempt < 2) { await new Promise(r => setTimeout(r, wait)); wait *= 3; continue; }
-      if ([401, 403, 404].includes(res.status) && m + 1 < models.length) { m++; attempt = 0; wait = 2000; continue; }
+      if ([401, 403, 404, 429].includes(res.status) && m + 1 < models.length) { m++; attempt = 0; wait = 2000; continue; }
       break;
     }
     if (!res.ok) {
       let detail = '';
       try { const j = await res.json(); detail = (j.error && j.error.message) || ''; } catch (e) {}
-      throw { code: res.status === 429 ? 'rate_limited' : res.status === 401 || res.status === 403 ? 'not_granted' : 'server_error', detail: `${res.status} ${detail}`.trim() };
+      throw { code: res.status === 429 ? 'rate_limited' : res.status === 401 || res.status === 403 ? 'not_granted' : res.status === 404 ? 'model_missing' : 'server_error', detail: `${res.status} ${detail}`.trim() };
     }
     const data = await res.json();
     if (data.promptFeedback && data.promptFeedback.blockReason) throw { code: 'refusal' };
