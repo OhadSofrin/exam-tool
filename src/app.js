@@ -606,7 +606,7 @@ Tokens inside "v", table cells, options and items:
 Rules: keep the exam's wording, nikud and numbering exactly. "l" is the sub label like "א" or "ב(2)"; the first block of a sub is its question text. Points like "(3 נק')" go to "pts", not the text. Every sub must have somewhere to answer. Prefer the most specific type: tables with root/binyan/גזרה/משקל columns use [שורש], [בניין], [גזרה] in empty cells; syntax roles use [מעל:..|תפקיד]; clause types use [פסוקית]; sentence types use [סוג משפט]; logical relations use [קשר לוגי]. Drop page-break notes, draft pages, cover name/class lines and any answers a student already wrote.`;
 const CLAUDE_ERRORS = {
   rate_limited: WEB ? 'הגעתם למגבלה של המפתח החינמי. מחכים דקה ומנסים שוב. אם נגמרה המכסה היומית, היא מתחדשת מחר.' : 'יש כרגע עומס או שהגעתם למגבלת השימוש. נסו שוב בעוד כמה דקות.',
-  not_granted: 'לא אושרה גישה ל-Claude.',
+  not_granted: CANVAS ? 'Gemini לא אישר בקשות מהחשבון הזה. בדקו שאתם מחוברים לחשבון Google. בחשבון של בית ספר ייתכן שמנהל המערכת חסם את Gemini באפליקציות, ואז אפשר להיכנס עם חשבון Google פרטי.' : 'לא אושרה גישה ל-Claude.',
   bad_key: 'מפתח ה-Gemini לא עובד. בדקו אותו בחיבור ל-Gemini.',
   model_missing: 'המודל שנבחר כבר לא זמין. בחרו מודל אחר בחיבור ל-Gemini.',
   network: 'אין חיבור לאינטרנט. בדקו את החיבור ונסו שוב.',
@@ -627,7 +627,7 @@ async function runClaude(prompt, label) {
     const code = e && e.code;
     const msg = CLAUDE_ERRORS[code] || `${AI} לא הצליח הפעם. אפשר לנסות שוב, אולי בניסוח אחר.`;
     const fix = WEB && (code === 'bad_key' || code === 'model_missing');
-    showModal(`<h2>זה לא הסתדר</h2><p>${msg}</p><div class="row">${fix ? '<button type="button" class="btn primary" id="reKey">חיבור ל-Gemini</button>' : ''}<button type="button" class="btn${fix ? '' : ' primary'}" data-close>סגירה</button></div>`);
+    showModal(`<h2>זה לא הסתדר</h2><p>${msg}</p>${e && e.detail ? `<p class="cap" dir="ltr">${esc(e.detail)}</p>` : ''}<div class="row">${fix ? '<button type="button" class="btn primary" id="reKey">חיבור ל-Gemini</button>' : ''}<button type="button" class="btn${fix ? '' : ' primary'}" data-close>סגירה</button></div>`);
     const rk = $('reKey'); if (rk) rk.onclick = () => askKey();
     return null;
   }
@@ -742,20 +742,32 @@ const geminiSample = {
     return parseJsonText(text);
   }
 };
-// Gemini Canvas: the loader makes the call, so it runs on the account of whoever opened the Canvas
+// Gemini Canvas: the loader makes the call, so it runs on the account of whoever opened the Canvas.
+// Not every account may use the loader's model, so on a refusal the page tries the models every Canvas account gets
+// (Canvas adds the key to any Gemini call the page makes).
+const CANVAS_MODELS = ['gemini-2.5-flash-preview-09-2025', 'gemini-2.5-flash'];
+const canvasCall = (model, body, signal) => model
+  ? fetch(`${GEM}/models/${model}:generateContent?key=`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
+  : window.XM_CANVAS.generate(body, signal);
 const canvasSample = {
   async json(prompt, opts) {
     opts = opts || {};
     const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 65536 } };
+    const models = [null, ...CANVAS_MODELS];
     let res, wait = 2000;
-    for (let attempt = 0; ; attempt++) {
-      try { res = await window.XM_CANVAS.generate(body, opts.signal); }
+    for (let m = 0, attempt = 0; ; attempt++) {
+      try { res = await canvasCall(models[m], body, opts.signal); }
       catch (e) { throw { code: e && e.name === 'AbortError' ? 'cancelled' : 'network' }; }
       if (res.status === 400 && body.generationConfig.maxOutputTokens) { delete body.generationConfig.maxOutputTokens; continue; }
       if ((res.status === 429 || res.status === 503) && attempt < 2) { await new Promise(r => setTimeout(r, wait)); wait *= 3; continue; }
+      if ([401, 403, 404].includes(res.status) && m + 1 < models.length) { m++; attempt = 0; wait = 2000; continue; }
       break;
     }
-    if (!res.ok) throw { code: res.status === 429 ? 'rate_limited' : res.status === 401 || res.status === 403 ? 'not_granted' : 'server_error' };
+    if (!res.ok) {
+      let detail = '';
+      try { const j = await res.json(); detail = (j.error && j.error.message) || ''; } catch (e) {}
+      throw { code: res.status === 429 ? 'rate_limited' : res.status === 401 || res.status === 403 ? 'not_granted' : 'server_error', detail: `${res.status} ${detail}`.trim() };
+    }
     const data = await res.json();
     if (data.promptFeedback && data.promptFeedback.blockReason) throw { code: 'refusal' };
     const c = data.candidates && data.candidates[0];
