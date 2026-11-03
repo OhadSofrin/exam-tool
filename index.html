@@ -1290,7 +1290,8 @@ async function readDocx(buf) {
       buf += t;
     });
     flush();
-    return out.replace(/\*\*\*\*/g, '');
+    // long answer lines and layout spaces carry nothing for the conversion
+    return out.replace(/\*\*\*\*/g, '').replace(/_{41,}/g, '_'.repeat(40)).replace(/ {4,}/g, '   ');
   }
   const lines = [];
   function walk(el) {
