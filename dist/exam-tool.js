@@ -1734,32 +1734,48 @@ const geminiSample = {
     return parseJsonText(text);
   }
 };
-// Gemini Canvas: Canvas adds the key to any Gemini call the page makes, so it runs on the account of whoever opened it.
-// Pro models only, newest first; the next one is tried only when an account cannot use the one before it.
-const CANVAS_MODELS = ['gemini-3-pro-preview', 'gemini-2.5-pro'];
-const canvasCall = (model, body, signal) => fetch(`${GEM}/models/${model}:generateContent?key=`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
+// Gemini Canvas: the call runs on the account of whoever opened the Canvas. Canvas gives the loader's own call its key;
+// the page reads that key from the loader's call, so it can also ask other models.
+// Pro models first; Canvas may not grant them, and then the loader's model does the work (the app says which one).
+const CANVAS_MODELS = ['gemini-3-pro-preview', 'gemini-2.5-pro', 'gemini-3-flash-preview', null];
+let canvasKey = null;
+async function probeCanvasKey() {
+  if (canvasKey !== null) return canvasKey;
+  const real = window.fetch; let url = '';
+  window.fetch = u => { url = String(u); return Promise.reject(new Error('probe')); };
+  try { await window.XM_CANVAS.generate({}, undefined); } catch (e) {} finally { window.fetch = real; }
+  const m = url.match(/[?&]key=([^&]*)/);
+  return (canvasKey = m ? decodeURIComponent(m[1]) : '');
+}
+const canvasCall = async (model, body, signal) => model
+  ? fetch(`${GEM}/models/${model}:generateContent?key=${encodeURIComponent(await probeCanvasKey())}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
+  : window.XM_CANVAS.generate(body, signal);
+// the model that did the last job, as the teacher reads it
+const modelName = () => { const m = sample && sample.lastModel; return m ? `Gemini ${m.replace(/^gemini-/, '').replace(/-preview.*$/, '').replace(/-/g, ' ').replace(/\b(pro|flash)\b/, s => s[0].toUpperCase() + s.slice(1))}` : AI; };
 const canvasSample = {
-  pdf: true,
+  pdf: true, lastModel: '',
   async json(prompt, opts) {
     opts = opts || {};
     const body = { contents: [{ role: 'user', parts: filesAndText(prompt, opts) }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 65536 } };
     // reading a link is a tool, and tools do not mix with the JSON-only answer mode
     if (opts.tools) { body.tools = opts.tools; delete body.generationConfig.responseMimeType; }
-    const models = CANVAS_MODELS;
-    let res, wait = 2000;
-    for (let m = 0, attempt = 0; ; attempt++) {
+    const models = CANVAS_MODELS, trail = [];
+    let res, wait = 2000, m = 0;
+    for (let attempt = 0; ; attempt++) {
       try { res = await canvasCall(models[m], body, opts.signal); }
       catch (e) { throw { code: e && e.name === 'AbortError' ? 'cancelled' : 'network' }; }
       if (res.status === 400 && body.generationConfig.maxOutputTokens) { delete body.generationConfig.maxOutputTokens; continue; }
       if ((res.status === 429 || res.status === 503) && attempt < 2) { await new Promise(r => setTimeout(r, wait)); wait *= 3; continue; }
-      if ([401, 403, 404, 429].includes(res.status) && m + 1 < models.length) { m++; attempt = 0; wait = 2000; continue; }
+      if ([401, 403, 404, 429].includes(res.status) && m + 1 < models.length) { trail.push(`${models[m] || 'loader'}: ${res.status}`); m++; attempt = 0; wait = 2000; continue; }
       break;
     }
     if (!res.ok) {
       let detail = '';
       try { const j = await res.json(); detail = (j.error && j.error.message) || ''; } catch (e) {}
-      throw { code: res.status === 429 ? 'rate_limited' : res.status === 401 || res.status === 403 ? 'not_granted' : res.status === 404 ? 'model_missing' : 'server_error', detail: `${res.status} ${detail}`.trim() };
+      trail.push(`${models[m] || 'loader'}: ${res.status} ${detail}`.trim());
+      throw { code: res.status === 429 ? 'rate_limited' : res.status === 401 || res.status === 403 ? 'not_granted' : res.status === 404 ? 'model_missing' : 'server_error', detail: trail.join(' · ') };
     }
+    this.lastModel = models[m] || 'gemini-3-flash-preview';
     const data = await res.json();
     if (data.promptFeedback && data.promptFeedback.blockReason) throw { code: 'refusal' };
     const c = data.candidates && data.candidates[0];
@@ -1819,7 +1835,7 @@ async function convertWithClaude() {
   const keepSettings = exam.settings, title = exam.title, src = exam._source, pics = exam.images;
   exam = normalize(keepArts(out, knownArts)); exam._source = src; exam.images = pics; if (!exam.title) exam.title = title;
   exam.settings = Object.assign(keepSettings, { texts: exam.articles.length > 0 || keepSettings.texts });
-  notes = [`הומר עם ${AI}. כדאי לעבור על השאלות.`]; editing = null;
+  notes = [`הומר עם ${modelName()}. כדאי לעבור על השאלות.`]; editing = null;
   changed(true);
 }
 // a PDF goes to Gemini as it is: Gemini reads the pages, tables and pictures itself
@@ -1837,7 +1853,7 @@ ${SCHEMA_HELP}`, url ? `${AI} פותח את הקישור וממיר את המב�
   const keepSettings = exam.settings, title = exam.title, src = exam._source;
   exam = normalize(out); exam._source = src; exam.images = {}; if (!exam.title) exam.title = title;
   exam.settings = Object.assign(keepSettings, { texts: exam.articles.length > 0 });
-  notes = [`הומר עם ${AI} מתוך ${url ? 'הקישור' : 'ה-PDF'}. תמונות מתוארות במילים; אפשר להוסיף אותן בעריכה, בכפתור "תמונה".`]; editing = null;
+  notes = [`הומר עם ${modelName()} מתוך ${url ? 'הקישור' : 'ה-PDF'}. תמונות מתוארות במילים; אפשר להוסיף אותן בעריכה, בכפתור "תמונה".`]; editing = null;
   changed(true);
 }
 // text copied from anywhere, or a link to an exam
