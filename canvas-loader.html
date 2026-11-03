@@ -13,8 +13,12 @@
     import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // the tool itself: dist/exam-tool.js from github.com/OhadSofrin/exam-tool, served by jsDelivr
-    const TOOL_URL = "https://cdn.jsdelivr.net/gh/OhadSofrin/exam-tool@main/dist/exam-tool.js";
+    // the tool itself: dist/exam-tool.js from github.com/OhadSofrin/exam-tool, served by jsDelivr.
+    // the latest version first; the tagged copy if the CDN has not caught up with the latest push yet
+    const TOOL_URLS = [
+      "https://cdn.jsdelivr.net/gh/OhadSofrin/exam-tool@main/dist/exam-tool.js",
+      "https://cdn.jsdelivr.net/gh/OhadSofrin/exam-tool@v1/dist/exam-tool.js"
+    ];
     const MODEL = "gemini-3-flash-preview";
 
     // Canvas fills in the empty key, so Gemini runs on the account of whoever opened this Canvas
@@ -39,11 +43,18 @@
     }
 
     window.XM_CANVAS = { generate, appId, uid, fs };
-    const s = document.createElement("script");
-    s.src = TOOL_URL;
-    s.onload = () => document.getElementById("xm-loading").remove();
-    s.onerror = () => { document.getElementById("xm-loading").textContent = "לא הצלחתי לטעון את הכלי. בדקו את החיבור לאינטרנט ונסו שוב."; };
-    document.body.appendChild(s);
+    const load = i => {
+      const s = document.createElement("script");
+      s.src = TOOL_URLS[i];
+      s.onload = () => document.getElementById("xm-loading").remove();
+      s.onerror = () => {
+        s.remove();
+        if (i + 1 < TOOL_URLS.length) load(i + 1);
+        else document.getElementById("xm-loading").textContent = "לא הצלחתי לטעון את הכלי. בדקו את החיבור לאינטרנט ונסו שוב.";
+      };
+      document.body.appendChild(s);
+    };
+    load(0);
   </script>
 </body>
 </html>
