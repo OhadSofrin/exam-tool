@@ -1553,7 +1553,9 @@ const BLANK = { title: 'מבחן חדש', subtitle: '', minutes: 120, settings: 
 function normalize(x) {
   x.settings = Object.assign({ nikud: true, texts: (x.articles || []).length > 0, textsName: 'מאמרים', textItem: 'מאמר', ext: 25, draft: true }, x.settings || {});
   x.articles = x.articles || []; x.instructions = x.instructions || []; x.parts = x.parts || [];
-  x.parts.forEach(p => { p.qs = p.qs || []; p.qs.forEach(q => { q.n = String(q.n == null ? '' : q.n); q.intro = q.intro || []; q.subs = q.subs || []; q.subs.forEach(s => { s.blocks = s.blocks || []; }); }); });
+  // a list name may come back as "[בניין]"; the exam needs the bare name
+  const bare = b => { ['head', 'label'].forEach(k => { if (typeof b[k] === 'string') b[k] = b[k].replace(/[[\]]/g, '').trim(); }); };
+  x.parts.forEach(p => { p.qs = p.qs || []; p.qs.forEach(q => { q.n = String(q.n == null ? '' : q.n); q.intro = q.intro || []; q.subs = q.subs || []; q.intro.forEach(bare); q.subs.forEach(s => { s.blocks = s.blocks || []; s.blocks.forEach(bare); }); }); });
   return x;
 }
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -2174,7 +2176,7 @@ Tokens inside "v", table cells, options and items:
  [תמונה:imgN] a picture: keep each mark exactly once, where it stands (in a question's text, a table cell, or as its own article paragraph); never invent marks
 Choices: when a part says to answer only some of its questions ("ענו על ארבע מן השאלות 6–10", "ענו על שתיים מן השאלות"), set its "pick" to that number. When the student chooses one of several chapters/parts ("בחרו בפרק ב – תחביר או בפרק ג – מערכת הצורות", "ענו על אחד מן הפרקים ב–ג"), make each chapter its own part and give those parts the same "alt" (e.g. "בחירה"); drop the line asking to write the chosen chapter's name.
 Articles: paragraphs labelled with letters ("פסקה א", "פסקה ב") → "pl":"letters"; drop the paragraph labels and line numbers from the text. A reference sheet (דף עזר / נספח) is one more article. Titles, part titles and "by" are plain text without marks.
-Rules: keep the exam's wording, nikud and numbering exactly. "l" is the sub label like "א" or "ב(2)"; the first block of a sub is its question text. Points like "(3 נק')" go to "pts", not the text. Every sub must have somewhere to answer. Labelled lines ("מאפיין: ___ דוגמה: ___", "השורש: ___ הבניין: ___") keep every blank; rewriting tasks ("נסחו מחדש", "המירו", "פרקו לשלושה משפטים") get a long answer with one row per line asked. Prefer the most specific type: tables with root/binyan/גזרה/משקל columns use [שורש], [בניין], [גזרה] in empty cells; syntax roles use [מעל:..|תפקיד]; clause types use [פסוקית]; sentence types use [סוג משפט]; logical relations use [קשר לוגי]. Drop page-break notes, draft pages, cover name/class lines and any answers a student already wrote.`;
+Rules: MOST IMPORTANT – copy the exam word for word: every instruction, question sentence, passage and option exactly as written, with its nikud, numbering and sub-question labels. Never summarize, shorten, rephrase, merge or drop a line, and never turn a task into a different task (an "explain" question stays a written explanation, not a fill-in). Every instruction line of a sub (like "(1) כתבו מעל כל אחת מצורות הבינוני את חלק הדיבור" or "נתחו בטבלה את הצורות המודגשות") stays as that sub's question text, even when the answer places sit in a passage or a table. Article references keep the exam's own words ("במאמר 2", "במאמרים 1 ו־2") with the link right after them; a paragraph number goes into a link only when the exam itself names that paragraph. "l" is the sub label like "א" or "ב(2)"; the first block of a sub is its question text. Points like "(3 נק')" go to "pts", not the text. Every sub must have somewhere to answer. Labelled lines ("מאפיין: ___ דוגמה: ___", "השורש: ___ הבניין: ___") keep every blank; rewriting tasks ("נסחו מחדש", "המירו", "פרקו לשלושה משפטים") get a long answer with one row per line asked. Prefer the most specific type: tables with root/binyan/גזרה/משקל columns use [שורש], [בניין], [גזרה] in empty cells; syntax roles use [מעל:..|תפקיד]; clause types use [פסוקית]; sentence types use [סוג משפט]; logical relations use [קשר לוגי]. Drop page-break notes, draft pages, cover name/class lines and any answers a student already wrote.`;
 const CLAUDE_ERRORS = {
   rate_limited: WEB ? 'הגעתם למגבלה של המפתח החינמי. מחכים דקה ומנסים שוב. אם נגמרה המכסה היומית, היא מתחדשת מחר.' : CANVAS ? 'נגמרה המכסה של Gemini Pro בחשבון הזה. היא מתחדשת לבד אחרי כמה שעות, לפעמים רק למחרת, ואז אפשר לנסות שוב. המבחן שמור ולא נפגע.' : 'יש כרגע עומס או שהגעתם למגבלת השימוש. נסו שוב בעוד כמה דקות.',
   not_granted: CANVAS ? 'Gemini לא אישר בקשות מהחשבון הזה. בדקו שאתם מחוברים לחשבון Google. בחשבון של בית ספר ייתכן שמנהל המערכת חסם את Gemini באפליקציות, ואז אפשר להיכנס עם חשבון Google פרטי.' : 'לא אושרה גישה ל-Claude.',
@@ -2423,8 +2425,49 @@ async function convertWithClaude() {
   exam = normalize(keepArts(out, knownArts)); exam._source = src; exam.images = pics; if (!exam.title) exam.title = title;
   exam.settings = Object.assign(keepSettings, { texts: exam.articles.length > 0 || keepSettings.texts });
   notes = [`הומר עם ${modelName()}. כדאי לעבור על השאלות.`]; editing = null;
+  // the line check (repairMissing) is not switched on yet: it still flags numbering and points as missing
   changed(true);
 }
+/* ===================== did the conversion keep every line of the exam? ===================== */
+// words without nikud, marks or punctuation, so the same sentence matches however it was formatted
+const normWords = s => String(s || '').replace(/\[(?:קו|מסגרת|מעל):([^\]|]*)(?:\|[^\]]*)?\]/g, ' $1 ').replace(/\[[^\]]*\]/g, ' ').replace(/\*\*/g, '').replace(/[֑-ׇ]/g, '').replace(/[^א-תa-zA-Z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+function examText(ex) {
+  const out = [], add = s => { if (s) out.push(String(s)); };
+  add(ex.title); add(ex.subtitle); (ex.instructions || []).forEach(add);
+  (ex.articles || []).forEach(a => { add(a.title); add(a.by); (a.ps || []).forEach(add); });
+  (ex.parts || []).forEach(p => { add(p.title); add(p.note); p.qs.forEach(q => [...q.intro, ...q.subs.flatMap(s => s.blocks)].forEach(b => {
+    add(b.v); [b.opts, b.items, b.left, b.right].forEach(a => (a || []).forEach(add)); if (Array.isArray(b.rows)) b.rows.forEach(r => Array.isArray(r) && r.forEach(add));
+  })); });
+  return out.join('\n');
+}
+const triples = w => { const s = new Set(); for (let i = 0; i + 2 < w.length; i++) s.add(`${w[i]} ${w[i + 1]} ${w[i + 2]}`); return s; };
+// the lines of the exam itself: from its first numbered line on (the cover page before it is left out)
+function sourceLines(ls) {
+  const all = [];
+  (ls || []).forEach(l => { if (l.k === 'tbl') l.rows.forEach(r => r.forEach(c => String(c).split('\n').forEach(x => all.push(x)))); else String(l.t || '').split('\n').forEach(x => all.push(x)); });
+  const first = all.findIndex(t => /^\s*(\*\*)?\s*\d{1,2}\s*[.)]/.test(t) && normWords(t).length > 3);
+  return all.slice(Math.max(0, first)).map(t => t.trim()).filter(t => t && !/^(\*\*)?\s*(המשך בעמוד|טיוטה|\[טבלה\]|\[סוף טבלה\])/.test(t));
+}
+function missingLines(src, ex) {
+  const have = triples(normWords(examText(ex)));
+  return src.filter(l => { const w = normWords(l); if (w.length < 5) return false; const t = [...triples(w)]; return t.filter(x => have.has(x)).length / t.length < 0.6; });
+}
+// lines that went missing go back to Gemini once, to be put in their place word for word; the rest are listed for the teacher
+async function repairMissing(src) {
+  let miss = missingLines(src, exam); if (!miss.length) return;
+  if (sample) {
+    const arts = exam.articles, id = curId;
+    const out = await runClaude(`Here is a Hebrew exam as JSON for a typing-friendly exam app (articles shortened to titles; keep them as they are). These lines of the original exam are missing from it or were changed:\n${miss.map(l => '- ' + l).join('\n')}\nPut each of them back word for word in its right place (a question's or sub-question's text, an instruction, a passage), with the answer places that belong to it, and restore any task that was changed into a different one. Leave out lines that are only cover-page details. Change nothing else. Return the WHOLE updated exam JSON only.\n${SCHEMA_HELP}\n\nEXAM JSON:\n${JSON.stringify(lean())}`, `${AI} משלים שורות שחסרו בהמרה…`);
+    if (id !== curId) return;
+    if (out && Array.isArray(out.parts) && out.parts.length) {
+      const keep = exam.settings, s2 = exam._source, pics = exam.images;
+      exam = normalize(keepArts(out, arts)); exam._source = s2; exam.images = pics; exam.settings = keep;
+    }
+    miss = missingLines(src, exam);
+  }
+  if (miss.length) notes.push(`כדאי לבדוק: ${miss.length === 1 ? 'שורה אחת' : miss.length + ' שורות'} מהקובץ לא נמצאו במבחן כמו שהן, למשל: "${miss.slice(0, 3).map(l => l.replace(/\*\*/g, '').slice(0, 70)).join('", "')}"`);
+}
+
 // a PDF goes to Gemini as it is: Gemini reads the pages, tables and pictures itself
 // a link goes to Gemini too: Gemini opens it (a PDF or a web page) and reads the exam there
 async function convertPdf(data, url) {
@@ -2442,6 +2485,17 @@ ${SCHEMA_HELP}`, url ? `${AI} פותח את הקישור וממיר את המב�
   exam.settings = Object.assign(keepSettings, { texts: exam.articles.length > 0 });
   notes = [`הומר עם ${modelName()} מתוך ${url ? 'הקישור' : 'ה-PDF'}. תמונות מתוארות במילים; אפשר להוסיף אותן בעריכה, בכפתור "תמונה".`]; editing = null;
   changed(true);
+}
+// pasted text: lines, and tables written as [טבלה] … [סוף טבלה] with | between cells (as the Word reader writes them)
+function textLines(v) {
+  const out = []; let tbl = null;
+  v.split(/\r?\n/).forEach(t => {
+    if (/^\s*\[טבלה\]\s*$/.test(t)) { tbl = []; return; }
+    if (/^\s*\[סוף טבלה\]\s*$/.test(t)) { if (tbl) out.push({ k: 'tbl', rows: tbl }); tbl = null; return; }
+    if (tbl) tbl.push(t.split(' | ').map(c => c.trim())); else out.push({ k: 'p', t });
+  });
+  if (tbl) out.push({ k: 'tbl', rows: tbl });
+  return out;
 }
 // text copied from anywhere, or a link to an exam
 function openPaste() {
@@ -2465,7 +2519,7 @@ function openPaste() {
       await createExam(normalize({ title: name.replace(/\.pdf$/i, ''), parts: [] }), v); notes = []; renderStatus();
       await convertPdf(null, v); return;
     }
-    lines = v.split(/\r?\n/).map(t => ({ k: 'p', t })); lines.images = {};
+    lines = textLines(v); lines.images = {};
     const r = buildExam(lines), ex = normalize(r.exam); ex.images = {};
     if (!ex.title || ex.title.length > 80) ex.title = 'מבחן מטקסט';
     await createExam(ex, 'טקסט'); notes = r.notes; renderStatus();
