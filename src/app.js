@@ -96,7 +96,7 @@ const Lib = {
 /* ===================== HOME ===================== */
 let libItems = [], libLoaded = false;
 async function showHome() {
-  closePop(); closeDrawer(); stopEdit(false);
+  closePop(); closeDrawer(); stopEdit(false); if (tour && tour.name === 'editor') endTour();
   $('editor').hidden = true; $('home').hidden = false;
   $('where').textContent = CL.ok() ? 'נשמר בחשבון Google שלך' : Lib.cloud() ? 'נשמר בחשבון שלך' : 'נשמר בדפדפן הזה · כדאי לגבות מדי פעם';
   renderLib();
@@ -183,6 +183,8 @@ function openLoaded(id, ex) {
   $('home').hidden = true; $('editor').hidden = false;
   $('saved').className = 'saved ok'; $('saved').textContent = 'נשמר';
   changed(true, true);
+  if (tour && tour.name === 'home') endTour();
+  maybeEditorTour();
 }
 $('backHome').onclick = async () => { stopEdit(false); await flush(); showHome(); };
 $('etitle').addEventListener('input', e => { exam.title = e.target.value; markDirty(); clearTimeout(pvT); pvT = setTimeout(renderPreview, 500); });
@@ -823,7 +825,7 @@ const canvasCall = async (model, body, signal) => model
 const modelName = () => {
   const m = sample && sample.lastModel; if (!m) return AI;
   const n = `Gemini ${m.replace(/^gemini-/, '').replace(/-preview.*$/, '').replace(/-/g, ' ').replace(/\b(pro|flash)\b/, s => s[0].toUpperCase() + s.slice(1))}`;
-  return /pro/.test(m) ? n : `${n} (Gemini Pro לא זמין באפליקציות של Canvas)`;
+  return /pro/.test(m) ? n : `${n} (Gemini Pro לא היה זמין הפעם)`;
 };
 const canvasSample = {
   pdf: true, lastModel: '',
@@ -1036,6 +1038,83 @@ async function askClaudeQuestion() {
   normalize(exam); markDirty(); renderStatus(); refreshQE();
 }
 
+/* ===================== guided tour ===================== */
+// a short walk-through on the first visit: three bubbles on the home screen, three in the editor the first time an exam is open.
+// The page stays usable under it (the highlighted button can be pressed). "סיור קצר" shows it again.
+const TOURS = {
+  home: [
+    { title: 'ברוכים הבאים! סיור של דקה', body: 'הכלי הופך מבחן ב-Word או PDF למבחן נוח להקלדה. שלושה דברים שכדאי לדעת, וזהו.',
+      note: CANVAS ? 'לפני הכול: נכנסים לאפליקציה <b>מחשבון Google של בית הספר</b>. בחשבון הזה יש Gemini Pro, שממיר את המבחנים מדויק יותר. נכנסתם מחשבון אחר? פתחו את הקישור שוב מחשבון בית הספר.' : '' },
+    { el: () => $('upcard'), title: 'מעלים מבחן', body: 'לוחצים <span class="tour-k">בחירת קובץ</span> ובוחרים את קובץ המבחן, או גוררים אותו לכאן. ההמרה לוקחת דקה עד שלוש, ואפשר פשוט לחכות.' },
+    { el: () => document.querySelector('.libbar'), title: 'כל המבחנים נשמרים כאן', body: 'כל מבחן שהמרתם נשמר לבד ומופיע כאן. לוחצים עליו כדי לפתוח אותו שוב. אחרי ההמרה הראשונה יופיעו עוד שלוש עצות קצרות.' }
+  ],
+  editor: [
+    { el: () => document.querySelector('#pv .xm-q .xm-edit'), title: 'בודקים מול המקור', body: `עוברים על המבחן כשהקובץ המקורי פתוח לידו. ${AI} לפעמים מקצר או משמיט שורה. מצאתם טעות? לוחצים <span class="tour-k">✎ עריכה</span> ליד השאלה ומתקנים.` },
+    { el: () => $('askForm'), title: 'או מבקשים במילים', body: `אפשר גם לכתוב כאן מה לשנות, למשל "שאלה 7 תהיה אמריקאית", ו-${AI} יעשה את זה.` },
+    { el: () => $('exportBtn'), title: 'מורידים לתלמידים', body: 'כשהמבחן מוכן לוחצים כאן. יורד קובץ אחד שמעתיקים למחשבי הבחינה, והתלמידים פותחים אותו בדפדפן. כל שינוי נשמר לבד.' }
+  ]
+};
+let tour = null, tourWait = null;
+const tourSeen = {};
+const tourReady = (async () => {
+  try { Object.assign(tourSeen, JSON.parse(localStorage.getItem('xm-tour') || '{}')); } catch (e) {}
+  if (CL.ok()) { try { const s = await window.XM_CANVAS.fs.getDoc(CL.ref('xm_prefs', 'tour')); if (s.exists()) Object.assign(tourSeen, s.data()); } catch (e) {} }
+})();
+function tourMark(name) {
+  tourSeen[name] = 1;
+  try { localStorage.setItem('xm-tour', JSON.stringify(tourSeen)); } catch (e) {}
+  if (CL.ok()) window.XM_CANVAS.fs.setDoc(CL.ref('xm_prefs', 'tour'), Object.assign({}, tourSeen)).catch(() => {});
+}
+function startTour(name) {
+  endTour();
+  const ov = document.createElement('div'); ov.className = 'tour'; ov.dir = 'rtl'; ov.lang = 'he';
+  ov.innerHTML = '<div class="tour-hole"></div><div class="tour-tip" role="dialog" aria-labelledby="tourT"></div>';
+  ov.addEventListener('click', e => { const b = e.target.closest('[data-tour]'); if (!b) return; const a = b.dataset.tour; if (a === 'end') endTour(); else tourGo(tour.i + (a === 'next' ? 1 : -1)); });
+  document.body.appendChild(ov);
+  tour = { name, ov, i: 0 }; tourMark(name); tourGo(0);
+}
+function tourGo(i) {
+  const steps = TOURS[tour.name];
+  if (i >= steps.length) { endTour(); return; }
+  tour.i = Math.max(0, i);
+  const s = steps[tour.i], n = steps.length, last = tour.i === n - 1, tip = tour.ov.querySelector('.tour-tip');
+  tip.innerHTML = `<div class="tour-n">${tour.i + 1} מתוך ${n}</div><h3 id="tourT">${s.title}</h3><p>${s.body}</p>${s.note ? `<p class="tour-note">${s.note}</p>` : ''}
+    <div class="row"><button type="button" class="btn primary" data-tour="next">${last ? 'סיום' : 'הבא'}</button>${tour.i ? '<button type="button" class="btn" data-tour="prev">הקודם</button>' : ''}${last ? '' : '<button type="button" class="btn ghost" data-tour="end">דילוג</button>'}</div>`;
+  const el = s.el && s.el(); if (el) el.scrollIntoView({ block: 'center' });
+  placeTour(); tip.querySelector('[data-tour="next"]').focus({ preventScroll: true });
+}
+function placeTour() {
+  if (!tour) return;
+  const s = TOURS[tour.name][tour.i], el = s.el && s.el(), hole = tour.ov.querySelector('.tour-hole'), tip = tour.ov.querySelector('.tour-tip');
+  const W = document.documentElement.clientWidth, H = innerHeight, tw = tip.offsetWidth, th = tip.offsetHeight, m = 12, pad = 6;
+  let r = el && el.getBoundingClientRect();
+  // a part that is hidden or covered (a narrow window stacks the editor's panels) gets a bubble in the middle instead
+  if (r && r.width) { tour.ov.style.visibility = 'hidden'; const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); tour.ov.style.visibility = ''; if (!t || !(el === t || el.contains(t))) r = null; }
+  tour.ov.classList.toggle('dim', !r || !r.width);
+  if (!r || !r.width) { tip.style.left = Math.max(m, (W - tw) / 2) + 'px'; tip.style.top = Math.max(m, (H - th) / 2) + 'px'; return; }
+  Object.assign(hole.style, { left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px' });
+  // under the highlighted part, or above it when there is no room, lined up with its right edge
+  let top = r.bottom + pad + m; if (top + th > H - m) top = r.top - pad - m - th;
+  if (top < m) top = Math.max(m, H - th - m);
+  tip.style.top = top + 'px'; tip.style.left = Math.min(W - tw - m, Math.max(m, r.right - tw)) + 'px';
+}
+function endTour() { if (!tour) return; tour.ov.remove(); tour = null; }
+addEventListener('resize', placeTour);
+document.addEventListener('scroll', placeTour, true);
+document.addEventListener('keydown', e => { if (tour && e.key === 'Escape') { e.stopImmediatePropagation(); endTour(); } }, true);
+// the editor tour waits until an exam is on screen and nothing else is open (the conversion window included)
+function maybeEditorTour() {
+  if (tourSeen.editor || tourWait) return;
+  let ready = 0;
+  tourWait = setInterval(() => {
+    if ($('editor').hidden || tourSeen.editor) { clearInterval(tourWait); tourWait = null; return; }
+    ready = $('modal').hidden && !tour && !editing && document.querySelector('#pv .xm-q .xm-edit') ? ready + 1 : 0;
+    if (ready >= 2) { clearInterval(tourWait); tourWait = null; startTour('editor'); }
+  }, 600);
+}
+$('tourBtn').onclick = () => startTour('home');
+$('tourBtnE').onclick = () => { stopEdit(); closeDrawer(); startTour('editor'); };
+
 /* ===================== start ===================== */
 const samplePromise = (async () => {
   if (CANVAS) { downloads = webDownloads; sample = canvasSample; return sample; }
@@ -1050,6 +1129,8 @@ $('aiSetBtn').onclick = () => askKey();
 renderAiState();
 (async () => {
   showHome();
+  // the first visit starts with the home tour, once the exams list is on screen
+  tourReady.then(async () => { for (let i = 0; i < 40 && !libLoaded; i++) await new Promise(r => setTimeout(r, 250)); if (!tourSeen.home && !tour && !$('home').hidden) startTour('home'); });
   if (window.claude && window.claude.use) {
     try { userNs = await window.claude.use('user'); if (userNs) { uid = await userNs.id(); const me = await userNs.me(); if (me && me.name) $('hello').innerHTML = `שלום ${esc(me.name.split(' ')[0])},<br><em>איזה מבחן ממירים היום?</em>`; } } catch (e) {}
     try { db = await window.claude.use('db'); } catch (e) {}
